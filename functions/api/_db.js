@@ -48,6 +48,14 @@ export async function initDb(env) {
                 )
             `),
             env.DB.prepare(`
+                CREATE TABLE IF NOT EXISTS otps (
+                    email TEXT PRIMARY KEY,
+                    otp_code TEXT NOT NULL,
+                    temp_data TEXT NOT NULL,
+                    expires_at INTEGER NOT NULL
+                )
+            `),
+            env.DB.prepare(`
                 CREATE INDEX IF NOT EXISTS idx_orders_phone ON orders(customer_phone)
             `),
             env.DB.prepare(`
