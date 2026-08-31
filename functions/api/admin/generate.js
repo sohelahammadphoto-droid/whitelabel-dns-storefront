@@ -1,0 +1,102 @@
+// functions/api/admin/generate.js — Manual Direct DNS Generation for Reseller
+import { initDb, json, handleOptions } from "../_db.js";
+
+function verifyAuth(request, env) {
+    const authHeader = request.headers.get("X-Admin-Password") || request.headers.get("Authorization") || "";
+    const expected = (env.ADMIN_PASSWORD || "admin123").trim();
+    if (authHeader.startsWith("Bearer ")) {
+        try {
+            const decoded = atob(authHeader.replace("Bearer ", ""));
+            return decoded.startsWith(expected + ":");
+        } catch {
+            return false;
+        }
+    }
+    return authHeader === expected;
+}
+
+export async function onRequestOptions() {
+    return handleOptions();
+}
+
+export async function onRequestPost(context) {
+    const { request, env } = context;
+    if (!verifyAuth(request, env)) {
+        return json({ success: false, error: "Unauthorized" }, 401);
+    }
+    await initDb(env);
+
+    try {
+        const body = await request.json();
+        const username = (body.username || "").trim().toLowerCase();
+        const phone = (body.phone || "").trim();
+        const durationDays = parseInt(body.duration_days, 10) || 30;
+        const note = (body.note || "Direct Store Admin Creation").trim();
+
+        const apiKey = (env.RESELLER_API_KEY || "").trim();
+        const mainApiUrl = (env.MAIN_API_URL || "https://dnshub.pages.dev").trim();
+
+        if (!apiKey) {
+            return json({ success: false, error: "RESELLER_API_KEY is not configured" }, 400);
+        }
+
+        const autoUsername = username || ("u" + Math.floor(100000 + Math.random() * 900000));
+
+        const apiRes = await fetch(`${mainApiUrl}/api/v1/client/create`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-API-Key": apiKey
+            },
+            body: JSON.stringify({
+                username: autoUsername,
+                phone: phone,
+                duration_days: durationDays,
+                note: note
+            })
+        });
+
+        const apiData = await apiRes.json();
+
+        if (!apiRes.ok || !apiData.success) {
+            return json({
+                success: false,
+                error: apiData.error || "Failed to create client",
+                details: apiData
+            }, 400);
+        }
+
+        const client = apiData.data || {};
+        const clientId = client.client_id || client.username || autoUsername;
+        const dnsUrl = client.dot_domain || `${clientId}.dns.sohel.pp.ua`;
+        const expireDate = client.expires_at || client.expire_date || "";
+
+        // Record in D1 if available
+        if (env.DB) {
+            const orderId = "MAN-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+            await env.DB.prepare(`
+                INSERT INTO orders (
+                    order_id, customer_name, customer_phone, plan_id, plan_name,
+                    duration_days, amount, currency, payment_method, trx_id, status,
+                    client_id, dns_url, expire_date, admin_note
+                ) VALUES (?, ?, ?, ?, ?, ?, 0, 'SAR', 'Manual Admin', 'DIRECT-GEN', 'approved', ?, ?, ?, ?)
+            `).bind(
+                orderId, autoUsername, phone, "custom", `${durationDays} Days Plan`,
+                durationDays, clientId, dnsUrl, expireDate, note
+            ).run();
+        }
+
+        return json({
+            success: true,
+            message: "DNS PIN generated successfully!",
+            data: {
+                client_id: clientId,
+                dns_url: dnsUrl,
+                expire_date: expireDate,
+                duration_days: durationDays
+            }
+        });
+    } catch (e) {
+        return json({ success: false, error: e.message }, 500);
+    }
+}
