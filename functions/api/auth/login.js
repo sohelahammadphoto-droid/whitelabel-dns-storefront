@@ -1,5 +1,6 @@
 // functions/api/auth/login.js — Customer Login API
 import { initDb, verifyPassword, createCustomerToken, json, handleOptions } from "../_db.js";
+import { verifyAntiBot } from "../_antibot.js";
 
 export async function onRequestOptions() {
     return handleOptions();
@@ -15,6 +16,12 @@ export async function onRequestPost(context) {
 
     try {
         const body = await request.json();
+
+        // 🛡️ Invisible Anti-Bot & Anti-Scraping Check
+        const antiBot = await verifyAntiBot(request, body, env);
+        if (!antiBot.ok) {
+            return json({ success: false, error: antiBot.error }, antiBot.status || 400);
+        }
         const email = (body.email || "").trim().toLowerCase();
         const password = body.password || "";
 
