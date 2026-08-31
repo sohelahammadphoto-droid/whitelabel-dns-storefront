@@ -1,19 +1,5 @@
 // functions/api/admin/generate.js — Manual Direct DNS Generation for Reseller
-import { initDb, json, handleOptions } from "../_db.js";
-
-function verifyAuth(request, env) {
-    const authHeader = request.headers.get("X-Admin-Password") || request.headers.get("Authorization") || "";
-    const expected = (env.ADMIN_PASSWORD || "admin123").trim();
-    if (authHeader.startsWith("Bearer ")) {
-        try {
-            const decoded = atob(authHeader.replace("Bearer ", ""));
-            return decoded.startsWith(expected + ":");
-        } catch {
-            return false;
-        }
-    }
-    return authHeader === expected;
-}
+import { initDb, verifyAuth, getResellerApiKey, getMainApiUrl, json, handleOptions } from "../_db.js";
 
 export async function onRequestOptions() {
     return handleOptions();
@@ -21,7 +7,7 @@ export async function onRequestOptions() {
 
 export async function onRequestPost(context) {
     const { request, env } = context;
-    if (!verifyAuth(request, env)) {
+    if (!await verifyAuth(request, env)) {
         return json({ success: false, error: "Unauthorized" }, 401);
     }
     await initDb(env);
@@ -33,11 +19,11 @@ export async function onRequestPost(context) {
         const durationDays = parseInt(body.duration_days, 10) || 30;
         const note = (body.note || "Direct Store Admin Creation").trim();
 
-        const apiKey = (env.RESELLER_API_KEY || "").trim();
-        const mainApiUrl = (env.MAIN_API_URL || "https://dnshub.pages.dev").trim();
+        const apiKey = await getResellerApiKey(env);
+        const mainApiUrl = await getMainApiUrl(env);
 
         if (!apiKey) {
-            return json({ success: false, error: "RESELLER_API_KEY is not configured" }, 400);
+            return json({ success: false, error: "Reseller API Key is not configured. Please enter your API key in Admin -> Store Settings." }, 400);
         }
 
         const autoUsername = username || ("u" + Math.floor(100000 + Math.random() * 900000));
