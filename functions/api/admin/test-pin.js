@@ -14,7 +14,6 @@ export async function onRequestPost(context) {
 
     try {
         const body = await request.json();
-        const username = (body.username || "").trim().toLowerCase();
         const phone = (body.phone || "").trim();
         const note = (body.note || "Store Admin 30-Min Trial").trim();
 
@@ -25,7 +24,9 @@ export async function onRequestPost(context) {
             return json({ success: false, error: "Reseller API Key is not configured. Please enter your API key in Admin -> Store Settings." }, 400);
         }
 
-        const autoUsername = username || ("test" + Math.floor(1000 + Math.random() * 9000));
+        // Always enforce standard random test PIN (testXXXX)
+        const randSuffix = Math.floor(1000 + Math.random() * 9000);
+        const autoUsername = `test${randSuffix}`;
 
         const apiRes = await fetch(`${mainApiUrl}/api/v1/client/test-pin`, {
             method: "POST",
