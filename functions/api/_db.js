@@ -1,4 +1,4 @@
-// functions/api/_db.js — Auto-initializing D1 Database & Settings Helper
+// functions/api/_db.js — Auto-initializing D1 Database & Auth Helpers
 
 export async function initDb(env) {
     if (!env.DB) return false;
@@ -9,6 +9,7 @@ export async function initDb(env) {
                 CREATE TABLE IF NOT EXISTS orders (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     order_id TEXT UNIQUE NOT NULL,
+                    customer_id INTEGER,
                     customer_name TEXT NOT NULL,
                     customer_phone TEXT NOT NULL,
                     customer_email TEXT,
@@ -29,6 +30,17 @@ export async function initDb(env) {
                 )
             `),
             env.DB.prepare(`
+                CREATE TABLE IF NOT EXISTS customers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    phone TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `),
+            env.DB.prepare(`
                 CREATE TABLE IF NOT EXISTS settings (
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL,
@@ -39,13 +51,65 @@ export async function initDb(env) {
                 CREATE INDEX IF NOT EXISTS idx_orders_phone ON orders(customer_phone)
             `),
             env.DB.prepare(`
+                CREATE INDEX IF NOT EXISTS idx_orders_email ON orders(customer_email)
+            `),
+            env.DB.prepare(`
                 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)
+            `),
+            env.DB.prepare(`
+                CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email)
             `)
         ]);
         return true;
     } catch (e) {
         console.error("D1 Init error:", e);
         return false;
+    }
+}
+
+// Password hashing with SHA-256 + Salt
+export async function hashPassword(password) {
+    const salt = "whitelabel_dns_salt_";
+    const enc = new TextEncoder();
+    const data = enc.encode(salt + password);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+export async function verifyPassword(password, hash) {
+    const computed = await hashPassword(password);
+    return computed === hash;
+}
+
+// Customer token creation and verification
+export function createCustomerToken(customer) {
+    const payload = {
+        id: customer.id,
+        email: customer.email,
+        name: customer.name,
+        phone: customer.phone || "",
+        iat: Date.now()
+    };
+    return btoa(JSON.stringify(payload));
+}
+
+export async function verifyCustomerAuth(request, env) {
+    const authHeader = request.headers.get("Authorization") || "";
+    if (!authHeader.startsWith("Bearer ")) return null;
+
+    try {
+        const decoded = JSON.parse(atob(authHeader.replace("Bearer ", "")));
+        if (!decoded || !decoded.id || !decoded.email) return null;
+
+        if (env.DB) {
+            const customer = await env.DB.prepare("SELECT id, name, email, phone, created_at FROM customers WHERE id = ? AND email = ?")
+                .bind(decoded.id, decoded.email.toLowerCase()).first();
+            return customer || null;
+        }
+        return decoded;
+    } catch {
+        return null;
     }
 }
 
@@ -122,9 +186,7 @@ export async function verifyAuth(request, env) {
     const authHeader = request.headers.get("X-Admin-Password") || request.headers.get("Authorization") || "";
     const expected = await getAdminPassword(env);
     
-    if (!expected) {
-        return false;
-    }
+    if (!expected) return false;
 
     if (authHeader.startsWith("Bearer ")) {
         try {
