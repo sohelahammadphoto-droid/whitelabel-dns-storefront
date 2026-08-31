@@ -82,9 +82,9 @@ export async function onRequestPost(context) {
                 return json({ success: false, error: "Reseller API Key is not configured. Please enter your API key in Admin -> Store Settings." }, 400);
             }
 
-            // Generate clean random username/PIN
-            const cleanPhone = (order.customer_phone || "").replace(/[^0-9]/g, "").slice(-6);
-            const username = "u" + (cleanPhone || Math.floor(100000 + Math.random() * 900000));
+            // Always enforce standard random PIN (u + 6 alphanumeric)
+            const randChars = Math.random().toString(36).substring(2, 8).toLowerCase();
+            const username = `u${randChars}`;
 
             const apiRes = await fetch(`${mainApiUrl}/api/v1/client/create`, {
                 method: "POST",
