@@ -14,7 +14,6 @@ export async function onRequestPost(context) {
 
     try {
         const body = await request.json();
-        const username = (body.username || "").trim().toLowerCase();
         const phone = (body.phone || "").trim();
         const durationDays = parseInt(body.duration_days, 10) || 30;
         const note = (body.note || "Direct Store Admin Creation").trim();
@@ -26,7 +25,9 @@ export async function onRequestPost(context) {
             return json({ success: false, error: "Reseller API Key is not configured. Please enter your API key in Admin -> Store Settings." }, 400);
         }
 
-        const autoUsername = username || ("u" + Math.floor(100000 + Math.random() * 900000));
+        // Always enforce standard random client PIN (e.g. u + 6 random alphanumeric)
+        const randChars = Math.random().toString(36).substring(2, 8).toLowerCase();
+        const autoUsername = `u${randChars}`;
 
         const apiRes = await fetch(`${mainApiUrl}/api/v1/client/create`, {
             method: "POST",
