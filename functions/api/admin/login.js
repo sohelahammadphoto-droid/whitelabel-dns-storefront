@@ -1,5 +1,5 @@
 // functions/api/admin/login.js — Reseller Admin Authentication API
-import { initDb, json, handleOptions } from "../_db.js";
+import { initDb, getAdminPassword, getResellerApiKey, getMainApiUrl, json, handleOptions } from "../_db.js";
 
 export async function onRequestOptions() {
     return handleOptions();
@@ -12,16 +12,20 @@ export async function onRequestPost(context) {
     try {
         const body = await request.json();
         const password = (body.password || "").trim();
-        const expectedPassword = (env.ADMIN_PASSWORD || "admin123").trim();
+        const expectedPassword = await getAdminPassword(env);
+
+        if (!expectedPassword) {
+            return json({ success: false, error: "Store not configured yet. Please complete first-time setup.", needs_setup: true }, 400);
+        }
 
         if (!password || password !== expectedPassword) {
             return json({ success: false, error: "Invalid admin password" }, 401);
         }
 
-        // Fetch reseller live stats from Main Platform API if RESELLER_API_KEY is present
+        // Fetch reseller live stats from Main Platform API using D1 key
         let resellerInfo = null;
-        const apiKey = (env.RESELLER_API_KEY || "").trim();
-        const mainApiUrl = (env.MAIN_API_URL || "https://dnshub.pages.dev").trim();
+        const apiKey = await getResellerApiKey(env);
+        const mainApiUrl = await getMainApiUrl(env);
 
         if (apiKey) {
             try {
