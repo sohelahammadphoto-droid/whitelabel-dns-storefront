@@ -3,6 +3,7 @@ let siteConfig = null;
 let currentPlan = null;
 let customerToken = localStorage.getItem("customer_token") || "";
 let customerUser = JSON.parse(localStorage.getItem("customer_user") || "null");
+const antiBotMountedAt = Date.now();
 
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("footer-year").textContent = new Date().getFullYear();
@@ -12,6 +13,30 @@ document.addEventListener("DOMContentLoaded", () => {
         fetchCustomerData();
     }
 });
+
+// 🛡️ Client-Side Invisible Anti-Bot Token Generator
+async function generateAntiBotPayload() {
+    const ts = antiBotMountedAt.toString();
+    const nonce = Math.floor(100000 + Math.random() * 900000).toString();
+    const raw = `${nonce}:${ts}:ultradns_guard`;
+    
+    let hash = "";
+    try {
+        const msgBuffer = new TextEncoder().encode(raw);
+        const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+        hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+    } catch (_) {
+        hash = "fallback";
+    }
+
+    return {
+        _ab_ts: ts,
+        _ab_pow: `${nonce}:${ts}:${hash}`,
+        _hp_fax: "",
+        _hp_company: "",
+        website_url_trap: ""
+    };
+}
 
 // Load dynamic config from D1 Database
 async function loadSiteConfig() {
@@ -156,7 +181,9 @@ async function handleCustomerLogin(e) {
     btn.disabled = true;
     btn.textContent = "Signing In...";
 
+    const antiBot = await generateAntiBotPayload();
     const payload = {
+        ...antiBot,
         email: document.getElementById("login-email").value.trim(),
         password: document.getElementById("login-password").value
     };
@@ -195,7 +222,9 @@ async function handleCustomerRegister(e) {
     btn.disabled = true;
     btn.textContent = "Processing...";
 
+    const antiBot = await generateAntiBotPayload();
     const payload = {
+        ...antiBot,
         name: document.getElementById("reg-name").value.trim(),
         email: document.getElementById("reg-email").value.trim(),
         phone: document.getElementById("reg-phone").value.trim(),
@@ -373,78 +402,67 @@ async function fetchCustomerData() {
             return;
         }
 
-        renderActiveServices(data.active_services || []);
-        renderOrderHistory(data.orders || []);
+        renderUserActiveDns(data.active_dns);
+        renderUserOrderHistory(data.orders);
     } catch (e) {
-        console.error("fetchCustomerData error:", e);
+        console.error("Failed to load customer profile:", e);
     }
 }
 
-function renderActiveServices(services) {
-    const container = document.getElementById("user-active-services");
-    if (!services || services.length === 0) {
+function renderUserActiveDns(activeDnsList) {
+    const container = document.getElementById("active-dns-container");
+    if (!activeDnsList || activeDnsList.length === 0) {
         container.innerHTML = `
-            <div style="background: rgba(255,255,255,0.02); border: 1px dashed var(--border-color); padding: 15px; border-radius: 8px; text-align: center; color: var(--text-muted); font-size: 13px;">
-                No active DNS connection yet. Your DNS will appear here automatically once your payment is verified!
+            <div style="background: rgba(0,0,0,0.2); border: 1px dashed var(--border-color); border-radius: 8px; padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px;">
+                No active Private DNS subscription found.<br>Choose a plan below to activate instant DNS access.
             </div>
         `;
         return;
     }
 
-    container.innerHTML = services.map(s => `
-        <div class="active-dns-card">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+    container.innerHTML = activeDnsList.map(dns => `
+        <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
-                    <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 700;">🟢 ACTIVE</span>
-                    <span style="font-size: 12px; color: var(--text-muted); margin-left: 6px;">PIN: <b style="color:#fff;">${s.client_id}</b></span>
+                    <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #38bdf8;">${dns.plan_name}</span>
+                    <h4 style="font-size: 16px; color: #fff; margin: 4px 0;">DNS Host: <code style="color: #38bdf8; font-size: 14px;">${dns.dns_url}</code></h4>
+                    <span style="font-size: 12px; color: var(--text-muted);">PIN / Client ID: <b style="color:#fff;">${dns.client_id}</b> | Expires: <b>${dns.expire_date || 'Active'}</b></span>
                 </div>
-                <span style="font-size: 12px; color: #fbbf24; font-weight: 600;">${s.expire_date ? 'Expires: ' + s.expire_date.split('T')[0] : s.plan_name}</span>
+                <span class="badge badge-approved" style="background: #34d399; color: #0f172a; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">ACTIVE</span>
             </div>
 
-            <div style="background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 13px; color: #38bdf8; word-break: break-all; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.06);">
-                ${s.dns_url}
-            </div>
-
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button type="button" class="btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="navigator.clipboard.writeText('${s.dns_url}').then(() => alert('Copied DNS Hostname: ${s.dns_url}'))">
-                    📋 Copy Hostname (Android)
+            <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="navigator.clipboard.writeText('${dns.dns_url}').then(() => alert('Copied DNS Hostname: ${dns.dns_url}'))">
+                    📋 Copy Hostname
                 </button>
-                <button type="button" class="btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="downloadIosProfile('${s.client_id}', '${s.dns_url}')">
-                    🍎 Download iOS Profile (.mobileconfig)
+                <button class="btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="downloadIosProfile('${dns.client_id}', '${dns.dns_url}')">
+                    🍏 Download iOS Profile
                 </button>
             </div>
         </div>
     `).join('');
 }
 
-function renderOrderHistory(orders) {
-    const container = document.getElementById("user-order-history");
+function renderUserOrderHistory(orders) {
+    const tbody = document.getElementById("user-orders-tbody");
     if (!orders || orders.length === 0) {
-        container.innerHTML = `<div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 10px;">No orders yet.</div>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 15px;">No orders found</td></tr>`;
         return;
     }
 
-    container.innerHTML = orders.map(o => {
-        const statusColors = { pending: "#fbbf24", approved: "#34d399", rejected: "#f87171" };
-        return `
-            <div class="order-history-item">
-                <div>
-                    <div style="font-weight: 700; font-size: 13px; color: #fff;">${o.plan_name} (${o.amount} ${o.currency})</div>
-                    <div style="font-size: 11px; color: var(--text-muted);">${o.order_id} • Trx: ${o.trx_id}</div>
-                </div>
-                <div style="text-align: right;">
-                    <span style="color: ${statusColors[o.status] || '#fff'}; font-weight: 800; font-size: 12px; text-transform: uppercase;">
-                        ${o.status}
-                    </span>
-                    <div style="font-size: 10px; color: var(--text-muted);">${o.created_at ? o.created_at.split(' ')[0] : ''}</div>
-                </div>
-            </div>
-        `;
-    }).join('');
+    tbody.innerHTML = orders.map(o => `
+        <tr>
+            <td><b style="color:#fff;">${o.order_id}</b><br><span style="font-size: 11px; color: var(--text-muted);">${o.created_at || ''}</span></td>
+            <td>${o.plan_name}</td>
+            <td>${o.amount} ${o.currency}</td>
+            <td><span class="badge badge-${o.status}">${o.status}</span></td>
+            <td>${o.dns_url ? `<code style="color: #38bdf8;">${o.dns_url}</code>` : '<span style="color:var(--text-muted);">Pending</span>'}</td>
+        </tr>
+    `).join('');
 }
 
-function downloadIosProfile(clientId, dnsUrl) {
-    const cleanHost = dnsUrl.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+function downloadIosProfile(clientId, dotDomain) {
+    const cleanHost = (dotDomain || `${clientId}.dns.sohel.pp.ua`).trim();
     const mobileconfig = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -530,7 +548,9 @@ async function submitOrder(e) {
     btn.disabled = true;
     btn.textContent = "Processing Order...";
 
+    const antiBot = await generateAntiBotPayload();
     const payload = {
+        ...antiBot,
         plan_id: currentPlan.id,
         plan_name: currentPlan.name,
         duration_days: currentPlan.duration_days,
@@ -559,61 +579,17 @@ async function submitOrder(e) {
         if (data.success) {
             alert(`🎉 ${data.message}\n\nOrder ID: ${data.data.order_id}\nAmount: ${data.data.amount} ${data.data.currency}`);
             closeOrderModal();
-            document.getElementById("order-form").reset();
-
             if (customerToken) {
                 fetchCustomerData();
                 openUserModal();
             }
         } else {
-            alert("❌ " + (data.error || "Failed to submit order"));
+            alert("❌ " + (data.error || "Order submission failed"));
         }
     } catch (err) {
-        alert("❌ Error: " + err.message);
+        alert("❌ Connection error: " + err.message);
     } finally {
         btn.disabled = false;
-        btn.textContent = "Confirm & Submit Order";
-    }
-}
-
-// ----------------------------------------------------
-// Public Status Checker (PIN / Phone)
-// ----------------------------------------------------
-async function checkDnsStatus() {
-    const query = document.getElementById("checker-query").value.trim();
-    const resBox = document.getElementById("checker-result");
-
-    if (!query) {
-        alert("Please enter your Phone Number or DNS PIN");
-        return;
-    }
-
-    resBox.style.display = "block";
-    resBox.innerHTML = `<div style="text-align: center; color: var(--text-muted);">Checking database...</div>`;
-
-    try {
-        const res = await fetch(`/api/check-status?q=${encodeURIComponent(query)}`);
-        const data = await res.json();
-
-        if (data.success && data.found) {
-            const d = data.data;
-            resBox.innerHTML = `
-                <div style="color: #34d399; font-weight: 800; font-size: 16px; margin-bottom: 8px;">✓ Active Subscription Found!</div>
-                <div style="font-size: 13px; color: #cbd5e1; line-height: 1.6;">
-                    <div>Customer: <b style="color:#fff;">${d.customer_name}</b></div>
-                    <div>Plan: <b>${d.plan_name}</b></div>
-                    <div>Status: <span class="badge badge-approved">${d.status}</span></div>
-                    ${d.dns_url ? `<div style="margin-top:8px;">DNS Hostname: <code style="color:#38bdf8; font-weight:bold;">${d.dns_url}</code></div>` : ''}
-                    ${d.expire_date ? `<div>Expires: <b>${d.expire_date.split('T')[0]}</b></div>` : ''}
-                </div>
-            `;
-        } else {
-            resBox.innerHTML = `
-                <div style="color: #f87171; font-weight: 700;">No active subscription found for "${query}".</div>
-                <div style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">If you just submitted payment, please allow a few minutes for verification.</div>
-            `;
-        }
-    } catch (e) {
-        resBox.innerHTML = `<div style="color: #f87171;">Check error: ${e.message}</div>`;
+        btn.textContent = "✓ Confirm & Submit Payment";
     }
 }
