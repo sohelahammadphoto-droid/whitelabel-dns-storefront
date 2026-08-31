@@ -73,14 +73,26 @@ export async function onRequestPost(context) {
             ).run();
         }
 
+        const waMessage =
+            `🎉 *DNS ACTIVATION COMPLETED* 🎉\n\n` +
+            `👤 *Username / PIN:* \`${clientId}\`\n` +
+            `🌐 *Private DNS Address:* \`${dnsUrl}\`\n` +
+            `⏳ *Validity:* *${durationDays} Days* (Expires: ${expireDate})\n\n` +
+            `📲 *Android Setup:* Settings ➔ Connections ➔ Private DNS ➔ Specified DNS ➔ Enter: \`${dnsUrl}\`\n` +
+            `🍏 *iOS 1-Click Profile:* https://dnshub.pages.dev/api/public/ios-profile?username=${clientId}\n\n` +
+            `🔥 Ultra-Fast Ad-Free Private DNS is now active for your device!`;
+
         return json({
             success: true,
             message: "DNS PIN generated successfully!",
             data: {
                 client_id: clientId,
+                username: clientId,
                 dns_url: dnsUrl,
                 expire_date: expireDate,
-                duration_days: durationDays
+                duration_days: durationDays,
+                phone: phone,
+                whatsapp_share_text: waMessage
             }
         });
     } catch (e) {
