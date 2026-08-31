@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Private DNS — High Speed & Banking Access</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Notice Bar -->
+    <div class="notice-bar">
+        <div class="container" id="notice-text">
+            ⚡ Instant Private DNS Activation after payment verification! 24/7 dedicated support.
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container nav-wrap">
+            <a href="/" class="brand-logo">
+                <span id="site-name">UltraDNS</span>
+                <span class="brand-badge">PRO</span>
+            </a>
+            <ul class="nav-menu">
+                <li><a href="#plans" class="nav-link">Plans</a></li>
+                <li><a href="#check" class="nav-link">Check Status</a></li>
+                <li><a href="#guide" class="nav-link">Setup Guide</a></li>
+                <li><a href="admin.html" class="nav-btn">Admin Portal</a></li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="status-pill">
+                <span class="status-dot"></span>
+                <span>Tier-1 Dedicated Private DNS Servers Online</span>
+            </div>
+            <h1 class="hero-title">
+                Lightning Fast, Encrypted<br>
+                <span>Private DNS Access</span>
+            </h1>
+            <p class="hero-subtitle" id="tagline">
+                Uninterrupted zero-lag connection for mobile banking, encrypted streaming, and HD VoIP voice protocols.
+            </p>
+            <div class="hero-actions">
+                <a href="#plans" class="btn-primary">🚀 Get Private DNS Now</a>
+                <a href="#check" class="btn-secondary">🔍 Check Existing PIN</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <div class="section-head">
+                <h2 class="section-title">Engineered for Perfection</h2>
+                <p class="section-desc">Why thousands of global users trust our encrypted DNS infrastructure</p>
+            </div>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">🛡️</span>
+                    <h3>Zero-Lag Banking</h3>
+                    <p>Instant TLS acceleration for all digital wallets, mobile apps, and financial portals without VPN throttling.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">📞</span>
+                    <h3>Crystal-Clear VoIP</h3>
+                    <p>Optimized low-latency routing for seamless voice and video calls anywhere in the world.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">🔒</span>
+                    <h3>Cryptographic DoT</h3>
+                    <p>Military-grade DNS-over-TLS encryption ensures your browsing data stays 100% private and tamper-proof.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">⚡</span>
+                    <h3>Instant Activation</h3>
+                    <p>Automated deployment gives you your unique private DNS hostname within minutes.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing" id="plans">
+        <div class="container">
+            <div class="section-head">
+                <h2 class="section-title">Select Your Pass</h2>
+                <p class="section-desc">Flexible packages tailored for individuals and families</p>
+            </div>
+            <div class="pricing-grid" id="plans-container">
+                <!-- Dynamically rendered plans -->
+                <div style="text-align:center; padding: 40px; color: var(--text-muted);">Loading packages...</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- DNS Status Checker -->
+    <section class="checker-section" id="check">
+        <div class="container">
+            <div class="checker-box">
+                <h2 style="font-size: 26px; font-weight: 800; margin-bottom: 8px;">Check DNS Status & Validity</h2>
+                <p style="color: var(--text-secondary); font-size: 14px;">Enter your Mobile Number or Assigned DNS PIN to view your connection details and remaining days.</p>
+                
+                <div class="checker-input-wrap">
+                    <input type="text" id="checker-query" class="checker-input" placeholder="e.g. 0501234567 or u123456">
+                    <button class="btn-primary" onclick="checkDnsStatus()">Check Status</button>
+                </div>
+
+                <div id="checker-result" class="checker-result">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Setup Guide Section -->
+    <section class="setup-guide" id="guide">
+        <div class="container">
+            <div class="section-head">
+                <h2 class="section-title">Easy 1-Minute Setup</h2>
+                <p class="section-desc">No third-party VPN apps needed. Native OS settings only.</p>
+            </div>
+            <div class="guide-grid">
+                <div class="guide-card">
+                    <h3>📱 Android Setup</h3>
+                    <ol class="step-list">
+                        <li>Go to phone <b>Settings ➔ Connections ➔ More connection settings</b>.</li>
+                        <li>Tap on <b>Private DNS</b>.</li>
+                        <li>Select <b>Private DNS provider hostname</b>.</li>
+                        <li>Paste your assigned DNS code (e.g. <code>user123.dns.sohel.pp.ua</code>) and tap <b>Save</b>.</li>
+                    </ol>
+                </div>
+                <div class="guide-card">
+                    <h3>🍎 iPhone / iPad Setup</h3>
+                    <ol class="step-list">
+                        <li>Download your personalized <b>.mobileconfig profile</b> from our portal.</li>
+                        <li>Open <b>Settings ➔ Profile Downloaded</b>.</li>
+                        <li>Tap <b>Install</b> and confirm with your Passcode.</li>
+                        <li>Your device is now securely connected via encrypted DNS!</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Order Modal -->
+    <div class="modal-overlay" id="order-modal">
+        <div class="modal-card">
+            <button class="modal-close" onclick="closeOrderModal()">&times;</button>
+            <h3 class="modal-title" id="modal-plan-title">Order Private DNS</h3>
+            <p class="modal-desc" id="modal-plan-desc">Complete your payment and submit details for instant activation.</p>
+
+            <form id="order-form" onsubmit="submitOrder(event)">
+                <input type="hidden" id="order-plan-id">
+                
+                <div class="form-group">
+                    <label class="form-label">Selected Plan Price</label>
+                    <div style="font-size: 24px; font-weight: 800; color: #38bdf8;" id="modal-plan-price">--</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Your Name</label>
+                    <input type="text" id="order-name" class="form-control" placeholder="Full Name" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">WhatsApp / Phone Number</label>
+                    <input type="text" id="order-phone" class="form-control" placeholder="e.g. +966 50 123 4567" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Payment Method</label>
+                    <select id="order-payment-method" class="form-control" onchange="updatePaymentInstruction()" required>
+                        <!-- Dynamic payment methods -->
+                    </select>
+                </div>
+
+                <div class="payment-box" id="payment-instruction-box">
+                    <div id="payment-instruction-text">Select payment method above</div>
+                    <div class="payment-num-row">
+                        <span id="payment-number-display">--</span>
+                        <button type="button" class="copy-btn" onclick="copyPaymentNumber()">Copy Number</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Transaction ID / Reference (TxID)</label>
+                    <input type="text" id="order-trx" class="form-control" placeholder="Enter Transaction Reference" required>
+                </div>
+
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;" id="order-submit-btn">
+                    Confirm & Submit Order
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Floating WhatsApp Widget -->
+    <a href="#" target="_blank" id="whatsapp-link" class="whatsapp-float" title="Chat on WhatsApp">
+        💬
+    </a>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; <span id="footer-year"></span> <span id="footer-owner">Premium Services</span>. Powered by Enterprise DNS Engine.</p>
+        </div>
+    </footer>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
