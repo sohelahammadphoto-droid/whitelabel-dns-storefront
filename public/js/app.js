@@ -134,12 +134,20 @@ function closeAuthModal() {
     document.getElementById("auth-modal").classList.remove("active");
 }
 
+let pendingOtpEmail = "";
+let resendTimer = null;
+
 function switchAuthTab(tab) {
     const isLogin = tab === 'login';
+    const isRegister = tab === 'register';
+    const isOtp = tab === 'otp';
+
     document.getElementById("tab-login-btn").classList.toggle("active", isLogin);
-    document.getElementById("tab-register-btn").classList.toggle("active", !isLogin);
+    document.getElementById("tab-register-btn").classList.toggle("active", isRegister);
+    
     document.getElementById("login-form").style.display = isLogin ? "block" : "none";
-    document.getElementById("register-form").style.display = isLogin ? "none" : "block";
+    document.getElementById("register-form").style.display = isRegister ? "block" : "none";
+    document.getElementById("otp-form").style.display = isOtp ? "block" : "none";
 }
 
 async function handleCustomerLogin(e) {
@@ -185,7 +193,7 @@ async function handleCustomerRegister(e) {
     e.preventDefault();
     const btn = document.getElementById("reg-submit-btn");
     btn.disabled = true;
-    btn.textContent = "Creating Account...";
+    btn.textContent = "Processing...";
 
     const payload = {
         name: document.getElementById("reg-name").value.trim(),
@@ -203,6 +211,18 @@ async function handleCustomerRegister(e) {
         const data = await res.json();
 
         if (data.success) {
+            if (data.needs_otp) {
+                // Switch to OTP screen
+                pendingOtpEmail = data.email || payload.email;
+                document.getElementById("otp-display-email").textContent = pendingOtpEmail;
+                document.getElementById("otp-input-code").value = "";
+                switchAuthTab('otp');
+                startResendCooldown();
+                alert(`📧 ${data.message}`);
+                return;
+            }
+
+            // Direct signup without OTP
             customerToken = data.token;
             customerUser = data.user;
             localStorage.setItem("customer_token", customerToken);
@@ -221,6 +241,95 @@ async function handleCustomerRegister(e) {
         btn.disabled = false;
         btn.textContent = "✨ Create Account";
     }
+}
+
+async function handleVerifyOtp(e) {
+    e.preventDefault();
+    const btn = document.getElementById("otp-submit-btn");
+    const code = document.getElementById("otp-input-code").value.trim();
+
+    if (!code || code.length !== 6) {
+        alert("Please enter the 6-digit verification code");
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Verifying Code...";
+
+    try {
+        const res = await fetch("/api/auth/verify-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: pendingOtpEmail, otp_code: code })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            customerToken = data.token;
+            customerUser = data.user;
+            localStorage.setItem("customer_token", customerToken);
+            localStorage.setItem("customer_user", JSON.stringify(customerUser));
+
+            alert("🎉 " + data.message);
+            closeAuthModal();
+            renderNavbarAuth();
+            openUserModal();
+        } else {
+            alert("❌ " + (data.error || "Verification failed"));
+        }
+    } catch (err) {
+        alert("❌ Error: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "✓ Verify & Activate Account";
+    }
+}
+
+async function handleResendOtp() {
+    if (!pendingOtpEmail) return;
+    const btn = document.getElementById("otp-resend-btn");
+    btn.disabled = true;
+    btn.textContent = "Sending...";
+
+    try {
+        const res = await fetch("/api/auth/resend-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: pendingOtpEmail })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert("📧 " + data.message);
+            startResendCooldown();
+        } else {
+            alert("❌ " + data.error);
+            btn.disabled = false;
+            btn.textContent = "Resend Code";
+        }
+    } catch (err) {
+        alert("Error: " + err.message);
+        btn.disabled = false;
+        btn.textContent = "Resend Code";
+    }
+}
+
+function startResendCooldown() {
+    const btn = document.getElementById("otp-resend-btn");
+    if (!btn) return;
+    let seconds = 60;
+    btn.disabled = true;
+    if (resendTimer) clearInterval(resendTimer);
+
+    resendTimer = setInterval(() => {
+        seconds--;
+        if (seconds > 0) {
+            btn.textContent = `Resend in ${seconds}s`;
+        } else {
+            clearInterval(resendTimer);
+            btn.disabled = false;
+            btn.textContent = "Resend Code";
+        }
+    }, 1000);
 }
 
 function handleCustomerLogout() {
