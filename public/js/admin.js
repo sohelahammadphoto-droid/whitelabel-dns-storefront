@@ -1,11 +1,79 @@
-// public/js/admin.js — Reseller Admin Dashboard Logic
+// public/js/admin.js — Reseller Admin Dashboard & Setup Wizard Logic
 let authToken = localStorage.getItem("store_admin_token") || "";
 
 document.addEventListener("DOMContentLoaded", () => {
-    if (authToken) {
-        showDashboard();
-    }
+    checkSetupStatus();
 });
+
+async function checkSetupStatus() {
+    try {
+        const res = await fetch("/api/admin/setup");
+        const data = await res.json();
+
+        if (data.success && data.needs_setup) {
+            document.getElementById("login-screen").style.display = "none";
+            document.getElementById("admin-app").style.display = "none";
+            document.getElementById("setup-screen").style.display = "flex";
+            return;
+        }
+
+        // Setup already completed
+        document.getElementById("setup-screen").style.display = "none";
+        if (authToken) {
+            showDashboard();
+        } else {
+            document.getElementById("login-screen").style.display = "flex";
+            document.getElementById("admin-app").style.display = "none";
+        }
+    } catch (e) {
+        console.error("Check setup status error:", e);
+        if (authToken) {
+            showDashboard();
+        }
+    }
+}
+
+async function handleInitialSetup(e) {
+    e.preventDefault();
+    const btn = document.getElementById("setup-submit-btn");
+    btn.disabled = true;
+    btn.textContent = "Configuring Store & Testing API...";
+
+    const payload = {
+        admin_password: document.getElementById("setup-password").value.trim(),
+        reseller_api_key: document.getElementById("setup-apikey").value.trim(),
+        site_name: document.getElementById("setup-sitename").value.trim(),
+        support_whatsapp: document.getElementById("setup-whatsapp").value.trim(),
+        main_api_url: document.getElementById("setup-apiurl").value.trim()
+    };
+
+    try {
+        const res = await fetch("/api/admin/setup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            authToken = data.token;
+            localStorage.setItem("store_admin_token", authToken);
+            alert("🎉 Setup Complete! Your store has been configured in your D1 Database.");
+            if (data.reseller && data.reseller.credits !== undefined) {
+                document.getElementById("reseller-balance").textContent = `${data.reseller.credits} Credits`;
+            }
+            document.getElementById("setup-screen").style.display = "none";
+            showDashboard();
+        } else {
+            alert("❌ Setup Error: " + (data.error || "Failed to initialize store."));
+        }
+    } catch (err) {
+        alert("❌ Connection error: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "✨ Save & Launch Admin Dashboard";
+    }
+}
 
 async function handleLogin(e) {
     e.preventDefault();
@@ -30,6 +98,9 @@ async function handleLogin(e) {
             }
             showDashboard();
         } else {
+            if (data.needs_setup) {
+                return checkSetupStatus();
+            }
             alert("❌ " + (data.error || "Invalid password"));
         }
     } catch (err) {
@@ -48,6 +119,7 @@ function handleLogout() {
 }
 
 function showDashboard() {
+    document.getElementById("setup-screen").style.display = "none";
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("admin-app").style.display = "flex";
     loadOrders();
@@ -221,6 +293,8 @@ async function loadSettings() {
         const json = await res.json();
         if (json.success && json.data) {
             const s = json.data;
+            if (s.reseller_api_key) document.getElementById("setting-apikey").value = s.reseller_api_key;
+            if (s.main_api_url) document.getElementById("setting-apiurl").value = s.main_api_url;
             if (s.site_name) document.getElementById("setting-sitename").value = s.site_name;
             if (s.tagline) document.getElementById("setting-tagline").value = s.tagline;
             if (s.support_whatsapp) document.getElementById("setting-whatsapp").value = s.support_whatsapp;
@@ -232,11 +306,18 @@ async function loadSettings() {
 async function handleSaveSettings(e) {
     e.preventDefault();
     const payload = {
+        reseller_api_key: document.getElementById("setting-apikey").value.trim(),
+        main_api_url: document.getElementById("setting-apiurl").value.trim(),
         site_name: document.getElementById("setting-sitename").value.trim(),
         tagline: document.getElementById("setting-tagline").value.trim(),
         support_whatsapp: document.getElementById("setting-whatsapp").value.trim(),
         notice: document.getElementById("setting-notice").value.trim()
     };
+
+    const newPass = document.getElementById("setting-newpassword").value.trim();
+    if (newPass) {
+        payload.new_password = newPass;
+    }
 
     try {
         const res = await fetch("/api/admin/settings", {
@@ -249,7 +330,13 @@ async function handleSaveSettings(e) {
         });
         const data = await res.json();
         if (data.success) {
-            alert("✅ Settings saved successfully!");
+            if (newPass) {
+                authToken = btoa(newPass + ":" + Date.now());
+                localStorage.setItem("store_admin_token", authToken);
+                document.getElementById("setting-newpassword").value = "";
+            }
+            alert("✅ Settings saved successfully to your D1 Database!");
+            loadSettings();
         } else {
             alert("❌ Failed to save: " + data.error);
         }
