@@ -29,7 +29,9 @@
                 <li><a href="#plans" class="nav-link">Plans</a></li>
                 <li><a href="#check" class="nav-link">Check Status</a></li>
                 <li><a href="#guide" class="nav-link">Setup Guide</a></li>
-                <li><a href="#plans" class="nav-btn">Get Started</a></li>
+                <li id="nav-auth-container">
+                    <button class="nav-btn" onclick="openAuthModal()">🔑 Sign In</button>
+                </li>
             </ul>
         </div>
     </header>
@@ -150,6 +152,106 @@
         </div>
     </section>
 
+    <!-- Auth Modal (Sign In / Register) -->
+    <div class="modal-overlay" id="auth-modal">
+        <div class="modal-card" style="max-width: 440px;">
+            <button class="modal-close" onclick="closeAuthModal()">&times;</button>
+            
+            <div class="auth-tabs">
+                <button type="button" class="auth-tab active" id="tab-login-btn" onclick="switchAuthTab('login')">Sign In</button>
+                <button type="button" class="auth-tab" id="tab-register-btn" onclick="switchAuthTab('register')">Create Account</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" onsubmit="handleCustomerLogin(event)">
+                <h3 class="modal-title" style="font-size: 20px;">Welcome Back</h3>
+                <p class="modal-desc">Sign in with your email to view your private DNS keys and orders.</p>
+
+                <div class="form-group">
+                    <label class="form-label">Gmail / Email Address</label>
+                    <input type="email" id="login-email" class="form-control" placeholder="name@gmail.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="login-password" class="form-control" placeholder="Your Password" required>
+                </div>
+
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px;" id="login-submit-btn">
+                    Sign In to Account
+                </button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" style="display: none;" onsubmit="handleCustomerRegister(event)">
+                <h3 class="modal-title" style="font-size: 20px;">Create Customer Account</h3>
+                <p class="modal-desc">Register with your Gmail to easily manage and renew your private DNS.</p>
+
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" id="reg-name" class="form-control" placeholder="e.g. Ahmed Ali" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Gmail / Email Address</label>
+                    <input type="email" id="reg-email" class="form-control" placeholder="name@gmail.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">WhatsApp / Mobile Number</label>
+                    <input type="text" id="reg-phone" class="form-control" placeholder="e.g. +966501234567" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password (Min. 6 characters)</label>
+                    <input type="password" id="reg-password" class="form-control" placeholder="Create a password" minlength="6" required>
+                </div>
+
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px;" id="reg-submit-btn">
+                    ✨ Create Account
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Customer Account Dashboard Modal -->
+    <div class="modal-overlay" id="user-modal">
+        <div class="modal-card" style="max-width: 600px;">
+            <button class="modal-close" onclick="closeUserModal()">&times;</button>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px;">
+                <div>
+                    <h3 style="font-size: 20px; font-weight: 800; color: #fff;" id="user-display-name">My Account</h3>
+                    <span style="font-size: 13px; color: var(--text-muted);" id="user-display-email">customer@gmail.com</span>
+                </div>
+                <button class="logout-btn" onclick="handleCustomerLogout()">🚪 Logout</button>
+            </div>
+
+            <!-- Active DNS Section -->
+            <div style="margin-bottom: 25px;">
+                <h4 style="font-size: 14px; font-weight: 700; color: #38bdf8; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">⚡ My Active DNS Connections</h4>
+                <div id="user-active-services">
+                    <!-- Populated by JS -->
+                    <div style="color: var(--text-muted); font-size: 13px;">No active DNS subscription found. Select a pass below to get started.</div>
+                </div>
+            </div>
+
+            <!-- Order History -->
+            <div>
+                <h4 style="font-size: 14px; font-weight: 700; color: #cbd5e1; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">📋 Order History</h4>
+                <div id="user-order-history" style="max-height: 200px; overflow-y: auto;">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; text-align: center;">
+                <button class="btn-primary" style="width: 100%;" onclick="closeUserModal(); location.href='#plans';">
+                    🚀 Buy New Pass / Renew
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Order Modal -->
     <div class="modal-overlay" id="order-modal">
         <div class="modal-card">
@@ -173,6 +275,11 @@
                 <div class="form-group">
                     <label class="form-label">WhatsApp / Phone Number</label>
                     <input type="text" id="order-phone" class="form-control" placeholder="e.g. +966 50 123 4567" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Gmail / Email Address (For Account Login)</label>
+                    <input type="email" id="order-email" class="form-control" placeholder="name@gmail.com">
                 </div>
 
                 <div class="form-group">
