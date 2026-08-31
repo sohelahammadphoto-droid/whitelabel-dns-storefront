@@ -156,6 +156,41 @@ function showTab(tabName) {
     document.getElementById("page-title").textContent = titles[tabName] || "Dashboard";
 }
 
+// Global copy helper with instant visual feedback
+window.copyToClipboard = function(text, btn, feedbackText = "✓ Copied!") {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+        if (btn) {
+            const origHtml = btn.innerHTML;
+            btn.innerHTML = feedbackText;
+            btn.style.background = "#059669";
+            btn.style.color = "#ffffff";
+            setTimeout(() => {
+                btn.innerHTML = origHtml;
+                btn.style.background = "";
+                btn.style.color = "";
+            }, 2000);
+        }
+    }).catch(() => {
+        prompt("Copy text manually:", text);
+    });
+};
+
+function formatOrderWaMessage(o) {
+    const clientId = o.client_id || o.username || "";
+    const dnsUrl = o.dns_url || `${clientId}.dns.sohel.pp.ua`;
+    const exp = o.expire_date || "30 Days";
+    const iosUrl = `https://dnshub.pages.dev/api/public/ios-profile?username=${clientId}`;
+
+    return `🎉 *DNS ACTIVATION COMPLETED* 🎉\n\n` +
+        `👤 *Username / PIN:* \`${clientId}\`\n` +
+        `🌐 *Private DNS Address:* \`${dnsUrl}\`\n` +
+        `⏳ *Validity:* *${o.plan_name || 'Paid Plan'}* (Expires: ${exp})\n\n` +
+        `📲 *Android Setup:* Settings ➔ Connections ➔ Private DNS ➔ Specified DNS ➔ Enter: \`${dnsUrl}\`\n` +
+        `🍏 *iOS 1-Click Profile:* ${iosUrl}\n\n` +
+        `🔥 Ultra-Fast Ad-Free Private DNS is now active for your device!`;
+}
+
 async function loadOrders() {
     const tbody = document.getElementById("orders-tbody");
     tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading orders...</td></tr>`;
@@ -180,7 +215,12 @@ async function loadOrders() {
             return;
         }
 
-        tbody.innerHTML = orders.map(o => `
+        tbody.innerHTML = orders.map(o => {
+            const cleanPhone = (o.customer_phone || "").replace(/[^0-9]/g, "");
+            const waMsg = formatOrderWaMessage(o);
+            const waLink = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMsg)}` : `https://api.whatsapp.com/send?text=${encodeURIComponent(waMsg)}`;
+
+            return `
             <tr>
                 <td><b style="color:#fff;">${o.order_id}</b><br><span style="font-size:11px; color:var(--text-muted);">${o.created_at || ''}</span></td>
                 <td><b>${o.customer_name}</b><br><span style="color:#38bdf8; font-size:12px;">${o.customer_phone}</span>${o.customer_email ? `<br><span style="color:#94a3b8; font-size:11px;">${o.customer_email}</span>` : ''}</td>
@@ -190,14 +230,21 @@ async function loadOrders() {
                 <td>${o.client_id ? `<code style="color:#34d399; font-weight:800;">${o.client_id}</code>` : '<span style="color:var(--text-muted);">--</span>'}</td>
                 <td>
                     ${o.status === 'pending' ? `
-                        <button class="btn btn-success btn-sm" onclick="approveOrder('${o.order_id}')">✓ Approve & Gen DNS</button>
-                        <button class="btn btn-danger btn-sm" onclick="rejectOrder('${o.order_id}')">✕ Reject</button>
+                        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                            <button class="btn btn-success btn-sm" onclick="approveOrder('${o.order_id}')">✓ Approve</button>
+                            <button class="btn btn-danger btn-sm" onclick="rejectOrder('${o.order_id}')">✕</button>
+                        </div>
                     ` : o.dns_url ? `
-                        <button class="btn btn-primary btn-sm" onclick="navigator.clipboard.writeText('${o.dns_url}').then(() => alert('Copied: ${o.dns_url}'))">Copy Hostname</button>
+                        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                            <button class="btn btn-primary btn-sm" onclick="copyToClipboard('${o.dns_url}', this, '✓ Host Copied')">📋 Copy DNS</button>
+                            <button class="btn btn-success btn-sm" onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(waMsg)}'), this, '✓ Msg Copied')">💬 Copy Msg</button>
+                            <a href="${waLink}" target="_blank" class="btn btn-sm" style="background:#22c55e; color:#fff; text-decoration:none; display:inline-flex; align-items:center; padding:4px 8px; border-radius:6px;" title="Send WhatsApp">🚀</a>
+                        </div>
                     ` : '<span style="color:var(--text-muted);">Done</span>'}
                 </td>
             </tr>
-        `).join('');
+            `;
+        }).join('');
     } catch (e) {
         tbody.innerHTML = `<tr><td colspan="7" style="color: #f87171;">Failed to load orders: ${e.message}</td></tr>`;
     }
@@ -289,24 +336,28 @@ async function handleGenerateTestPin(e) {
         if (data.success) {
             const d = data.data;
             const cleanPhone = payload.phone.replace(/[^0-9]/g, "");
-            const waLink = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(d.whatsapp_share_text)}` : `https://api.whatsapp.com/send?text=${encodeURIComponent(d.whatsapp_share_text)}`;
+            const waMsg = d.whatsapp_share_text;
+            const waLink = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMsg)}` : `https://api.whatsapp.com/send?text=${encodeURIComponent(waMsg)}`;
 
             resBox.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                     <div style="color: #34d399; font-weight: 800; font-size: 16px;">🎉 30-Minute Test PIN Created!</div>
                     <span class="badge badge-approved">⚡ 30 MIN TRIAL</span>
                 </div>
-                <div style="font-size: 13px; color: #cbd5e1; line-height: 1.7; margin-bottom: 15px;">
+                <div style="font-size: 13px; color: #cbd5e1; line-height: 1.8; margin-bottom: 16px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
                     <div>👤 Random Test PIN: <b style="color:#fff; font-size:15px; font-family:monospace;">${d.username}</b></div>
-                    <div>🌐 DNS Hostname: <code style="color:#38bdf8; font-weight:bold; font-size:13px;">${d.dns_url}</code></div>
+                    <div>🌐 DNS Hostname: <code style="color:#38bdf8; font-weight:bold; font-size:14px;">${d.dns_url}</code></div>
                     <div>⏱️ Validity: <b style="color:#fbbf24;">30 Minutes (${d.expires_at || 'Just Now'})</b></div>
                 </div>
                 <div style="display:flex; gap: 8px; flex-wrap: wrap;">
-                    <button type="button" class="btn btn-primary btn-sm" onclick="navigator.clipboard.writeText('${d.dns_url}').then(() => alert('Copied Hostname: ${d.dns_url}'))">
-                        📋 Copy Hostname
+                    <button type="button" class="btn btn-primary" onclick="copyToClipboard('${d.dns_url}', this, '✓ Hostname Copied!')" style="flex:1;">
+                        📋 1. Copy Hostname
                     </button>
-                    <a href="${waLink}" target="_blank" class="btn btn-success btn-sm" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
-                        💬 Share on WhatsApp
+                    <button type="button" class="btn btn-success" onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(waMsg)}'), this, '✓ Message Copied!')" style="flex:1;">
+                        💬 2. Copy WhatsApp Msg
+                    </button>
+                    <a href="${waLink}" target="_blank" class="btn btn-sm" style="background:#22c55e; color:#fff; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border-radius:6px; font-weight:bold;">
+                        🚀 Send
                     </a>
                 </div>
             `;
@@ -354,14 +405,31 @@ async function handleManualGenerate(e) {
 
         if (data.success) {
             const d = data.data;
+            const cleanPhone = payload.phone.replace(/[^0-9]/g, "");
+            const waMsg = d.whatsapp_share_text;
+            const waLink = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMsg)}` : `https://api.whatsapp.com/send?text=${encodeURIComponent(waMsg)}`;
+
             resBox.innerHTML = `
-                <div style="color: #34d399; font-weight: 800; font-size: 16px; margin-bottom: 8px;">🎉 DNS PIN Created Successfully!</div>
-                <div style="font-size: 13px; color: #cbd5e1; line-height: 1.6;">
-                    <div>PIN / Client ID: <b style="color:#fff;">${d.client_id}</b></div>
-                    <div>DNS Hostname: <b style="color:#38bdf8;">${d.dns_url}</b></div>
-                    <div>Expires At: <b>${d.expire_date}</b></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    <div style="color: #34d399; font-weight: 800; font-size: 16px;">🎉 DNS PIN Created Successfully!</div>
+                    <span class="badge badge-approved">⚡ ${d.duration_days} DAYS</span>
                 </div>
-                <button class="btn btn-primary btn-sm" style="margin-top: 10px;" onclick="navigator.clipboard.writeText('${d.dns_url}').then(() => alert('Copied!'))">Copy Hostname</button>
+                <div style="font-size: 13px; color: #cbd5e1; line-height: 1.8; margin-bottom: 16px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div>👤 Client PIN: <b style="color:#fff; font-size:15px; font-family:monospace;">${d.client_id}</b></div>
+                    <div>🌐 DNS Hostname: <code style="color:#38bdf8; font-weight:bold; font-size:14px;">${d.dns_url}</code></div>
+                    <div>📅 Expires At: <b style="color:#fbbf24;">${d.expire_date}</b></div>
+                </div>
+                <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-primary" onclick="copyToClipboard('${d.dns_url}', this, '✓ Hostname Copied!')" style="flex:1;">
+                        📋 1. Copy Hostname
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(waMsg)}'), this, '✓ Message Copied!')" style="flex:1;">
+                        💬 2. Copy WhatsApp Msg
+                    </button>
+                    <a href="${waLink}" target="_blank" class="btn btn-sm" style="background:#22c55e; color:#fff; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border-radius:6px; font-weight:bold;">
+                        🚀 Send
+                    </a>
+                </div>
             `;
             loadOrders();
             loadBalance();
