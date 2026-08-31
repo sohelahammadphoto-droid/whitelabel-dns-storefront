@@ -1,6 +1,7 @@
 // functions/api/auth/register.js — Customer Registration & Optional Gmail OTP API
 import { initDb, hashPassword, createCustomerToken, getSetting, json, handleOptions } from "../_db.js";
 import { sendOtpEmail } from "../_email.js";
+import { verifyAntiBot } from "../_antibot.js";
 
 export async function onRequestOptions() {
     return handleOptions();
@@ -16,6 +17,12 @@ export async function onRequestPost(context) {
 
     try {
         const body = await request.json();
+
+        // 🛡️ Invisible Anti-Bot & Anti-Scraping Check
+        const antiBot = await verifyAntiBot(request, body, env);
+        if (!antiBot.ok) {
+            return json({ success: false, error: antiBot.error }, antiBot.status || 400);
+        }
         const name = (body.name || "").trim();
         const email = (body.email || "").trim().toLowerCase();
         const password = body.password || "";
