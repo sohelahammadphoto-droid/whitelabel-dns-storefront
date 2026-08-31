@@ -166,9 +166,8 @@
                     </p>
 
                     <form onsubmit="handleGenerateTestPin(event)">
-                        <div style="margin-bottom: 14px;">
-                            <label style="display:block; font-size: 12px; font-weight: 700; color: #cbd5e1; margin-bottom: 5px;">Customer Username / PIN (Optional)</label>
-                            <input type="text" id="test-pin-username" class="form-control" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" placeholder="Leave empty for auto-generated PIN (e.g. test5829)">
+                        <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 6px; padding: 10px 12px; margin-bottom: 15px; font-size: 12px; color: #a5b4fc;">
+                            🎲 <b>Automatic Random PIN:</b> The system will securely generate a random 30-min trial PIN (e.g. <code>test5829</code>) matching main platform standards.
                         </div>
                         <div style="margin-bottom: 14px;">
                             <label style="display:block; font-size: 12px; font-weight: 700; color: #cbd5e1; margin-bottom: 5px;">Customer WhatsApp / Phone Number (Optional)</label>
@@ -195,9 +194,8 @@
                     <div class="box-title" style="margin-bottom: 15px;">⚡ Full Pass PIN Generation (Paid Credits)</div>
                     <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Directly create a long-term client PIN from your main platform API balance (for walk-in or offline cash customers).</p>
                     <form onsubmit="handleManualGenerate(event)">
-                        <div style="margin-bottom: 14px;">
-                            <label style="display:block; font-size: 12px; margin-bottom: 4px;">Custom Username / PIN (Optional)</label>
-                            <input type="text" id="gen-username" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" placeholder="Leave empty for auto-PIN">
+                        <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 6px; padding: 10px 12px; margin-bottom: 15px; font-size: 12px; color: #a5b4fc;">
+                            🎲 <b>Automatic Random PIN:</b> The system will securely generate a unique private DNS PIN (e.g. <code>u7k9x2</code>) matching main platform standards.
                         </div>
                         <div style="margin-bottom: 14px;">
                             <label style="display:block; font-size: 12px; margin-bottom: 4px;">Customer Phone Number</label>
@@ -211,6 +209,10 @@
                                 <option value="180">6 Months (180 Days - 6 Credits)</option>
                                 <option value="365">1 Year (365 Days - 12 Credits)</option>
                             </select>
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <label style="display:block; font-size: 12px; margin-bottom: 4px;">Admin Note (Optional)</label>
+                            <input type="text" id="gen-note" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" placeholder="e.g. Cash client">
                         </div>
                         <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;" id="gen-submit-btn">⚡ Generate Paid DNS PIN</button>
                     </form>
