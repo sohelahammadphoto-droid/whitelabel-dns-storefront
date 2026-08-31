@@ -403,6 +403,10 @@ async function loadSettings() {
             if (s.smtp_gmail_app_password) document.getElementById("setting-gmailapppassword").value = s.smtp_gmail_app_password;
             if (s.smtp_sender_name) document.getElementById("setting-gmailsendername").value = s.smtp_sender_name;
 
+            // Anti-Bot & Turnstile Settings
+            if (s.turnstile_site_key) document.getElementById("setting-turnstilesitekey").value = s.turnstile_site_key;
+            if (s.turnstile_secret_key) document.getElementById("setting-turnstilesecretkey").value = s.turnstile_secret_key;
+
             toggleEmailProviderFields();
         }
     } catch (_) {}
@@ -501,7 +505,9 @@ async function handleSaveSettings(e) {
         site_name: document.getElementById("setting-sitename").value.trim(),
         tagline: document.getElementById("setting-tagline").value.trim(),
         support_whatsapp: document.getElementById("setting-whatsapp").value.trim(),
-        notice: document.getElementById("setting-notice").value.trim()
+        notice: document.getElementById("setting-notice").value.trim(),
+        turnstile_site_key: document.getElementById("setting-turnstilesitekey").value.trim(),
+        turnstile_secret_key: document.getElementById("setting-turnstilesecretkey").value.trim()
     };
 
     const newPass = document.getElementById("setting-newpassword").value.trim();
