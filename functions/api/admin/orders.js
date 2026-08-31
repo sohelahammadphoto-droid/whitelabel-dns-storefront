@@ -1,19 +1,5 @@
 // functions/api/admin/orders.js — Reseller Order Management API
-import { initDb, json, handleOptions } from "../_db.js";
-
-function verifyAuth(request, env) {
-    const authHeader = request.headers.get("X-Admin-Password") || request.headers.get("Authorization") || "";
-    const expected = (env.ADMIN_PASSWORD || "admin123").trim();
-    if (authHeader.startsWith("Bearer ")) {
-        try {
-            const decoded = atob(authHeader.replace("Bearer ", ""));
-            return decoded.startsWith(expected + ":");
-        } catch {
-            return false;
-        }
-    }
-    return authHeader === expected;
-}
+import { initDb, verifyAuth, getResellerApiKey, getMainApiUrl, json, handleOptions } from "../_db.js";
 
 export async function onRequestOptions() {
     return handleOptions();
@@ -22,7 +8,7 @@ export async function onRequestOptions() {
 // GET: List all orders
 export async function onRequestGet(context) {
     const { request, env } = context;
-    if (!verifyAuth(request, env)) {
+    if (!await verifyAuth(request, env)) {
         return json({ success: false, error: "Unauthorized" }, 401);
     }
     await initDb(env);
@@ -54,7 +40,7 @@ export async function onRequestGet(context) {
 // POST: Action on order (approve, reject)
 export async function onRequestPost(context) {
     const { request, env } = context;
-    if (!verifyAuth(request, env)) {
+    if (!await verifyAuth(request, env)) {
         return json({ success: false, error: "Unauthorized" }, 401);
     }
     await initDb(env);
@@ -88,12 +74,12 @@ export async function onRequestPost(context) {
                 return json({ success: true, message: "Order is already approved", data: order });
             }
 
-            // Call Main Platform API to issue DNS PIN
-            const apiKey = (env.RESELLER_API_KEY || "").trim();
-            const mainApiUrl = (env.MAIN_API_URL || "https://dnshub.pages.dev").trim();
+            // Call Main Platform API to issue DNS PIN using D1 database key
+            const apiKey = await getResellerApiKey(env);
+            const mainApiUrl = await getMainApiUrl(env);
 
             if (!apiKey) {
-                return json({ success: false, error: "RESELLER_API_KEY environment variable is not configured on this server!" }, 400);
+                return json({ success: false, error: "Reseller API Key is not configured. Please enter your API key in Admin -> Store Settings." }, 400);
             }
 
             // Generate clean random username/PIN
