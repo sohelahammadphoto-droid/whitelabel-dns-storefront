@@ -9,6 +9,49 @@
 </head>
 <body>
 
+    <!-- Setup Wizard Screen (Shown only on first launch) -->
+    <div id="setup-screen" class="login-screen" style="display: none;">
+        <div class="login-card" style="max-width: 500px; text-align: left;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="font-size: 32px; margin-bottom: 5px;">🚀</div>
+                <h2 style="font-size: 22px; font-weight: 800; color: #fff;">Store Setup Wizard</h2>
+                <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">Initialize your store settings. Everything is saved directly inside your secure D1 Database!</p>
+            </div>
+
+            <form onsubmit="handleInitialSetup(event)">
+                <div style="margin-bottom: 14px;">
+                    <label style="display:block; font-size: 12px; font-weight: 700; color: #38bdf8; margin-bottom: 5px;">1. Admin Login Password *</label>
+                    <input type="password" id="setup-password" class="form-control" style="width: 100%; padding: 11px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" placeholder="Create your admin password" required>
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label style="display:block; font-size: 12px; font-weight: 700; color: #38bdf8; margin-bottom: 5px;">2. Your Reseller API Key *</label>
+                    <input type="text" id="setup-apikey" class="form-control" style="width: 100%; padding: 11px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" placeholder="rsk_live_..." required>
+                    <span style="font-size: 11px; color: var(--text-muted);">Get this from your Main Platform Reseller Dashboard</span>
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label style="display:block; font-size: 12px; font-weight: 700; color: #cbd5e1; margin-bottom: 5px;">3. Store Name</label>
+                    <input type="text" id="setup-sitename" class="form-control" style="width: 100%; padding: 11px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" value="UltraDNS Pro" required>
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label style="display:block; font-size: 12px; font-weight: 700; color: #cbd5e1; margin-bottom: 5px;">4. Support WhatsApp Number</label>
+                    <input type="text" id="setup-whatsapp" class="form-control" style="width: 100%; padding: 11px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" placeholder="+966500000000">
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display:block; font-size: 12px; font-weight: 700; color: #cbd5e1; margin-bottom: 5px;">5. Main Platform API URL</label>
+                    <input type="text" id="setup-apiurl" class="form-control" style="width: 100%; padding: 11px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" value="https://dnshub.pages.dev" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 13px; font-size: 15px; font-weight: 700;" id="setup-submit-btn">
+                    ✨ Save & Launch Admin Dashboard
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- Login Screen -->
     <div id="login-screen" class="login-screen">
         <div class="login-card">
@@ -137,9 +180,31 @@
 
             <!-- TAB 3: SETTINGS -->
             <div id="tab-settings" class="tab-content" style="display: none;">
-                <div class="card-box" style="max-width: 600px;">
-                    <div class="box-title" style="margin-bottom: 15px;">Storefront Branding & Payment Settings</div>
+                <div class="card-box" style="max-width: 650px;">
+                    <div class="box-title" style="margin-bottom: 15px;">Storefront & Reseller API Settings</div>
+                    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">All changes are saved directly in your private D1 Database.</p>
+                    
                     <form onsubmit="handleSaveSettings(event)">
+                        <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                            <h4 style="color: #38bdf8; font-size: 14px; margin-bottom: 10px;">🔑 Reseller API Configuration</h4>
+                            <div style="margin-bottom: 12px;">
+                                <label style="display:block; font-size: 12px; margin-bottom: 4px;">Reseller API Key</label>
+                                <input type="text" id="setting-apikey" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" placeholder="rsk_live_..." required>
+                            </div>
+                            <div>
+                                <label style="display:block; font-size: 12px; margin-bottom: 4px;">Main Platform API URL</label>
+                                <input type="text" id="setting-apiurl" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" value="https://dnshub.pages.dev" required>
+                            </div>
+                        </div>
+
+                        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                            <h4 style="color: #34d399; font-size: 14px; margin-bottom: 10px;">🛡️ Security / Admin Password</h4>
+                            <div>
+                                <label style="display:block; font-size: 12px; margin-bottom: 4px;">Change Admin Password (Optional)</label>
+                                <input type="password" id="setting-newpassword" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" placeholder="Leave empty to keep current password">
+                            </div>
+                        </div>
+
                         <div style="margin-bottom: 14px;">
                             <label style="display:block; font-size: 12px; margin-bottom: 4px;">Store Name</label>
                             <input type="text" id="setting-sitename" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" required>
@@ -156,7 +221,7 @@
                             <label style="display:block; font-size: 12px; margin-bottom: 4px;">Header Notice Bar Text</label>
                             <input type="text" id="setting-notice" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;">
                         </div>
-                        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">💾 Save Settings</button>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-weight: 700;">💾 Save Settings to Database</button>
                     </form>
                 </div>
             </div>
