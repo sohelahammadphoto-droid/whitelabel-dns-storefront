@@ -1,19 +1,5 @@
 // functions/api/admin/settings.js — Reseller Storefront Settings API
-import { initDb, json, handleOptions } from "../_db.js";
-
-function verifyAuth(request, env) {
-    const authHeader = request.headers.get("X-Admin-Password") || request.headers.get("Authorization") || "";
-    const expected = (env.ADMIN_PASSWORD || "admin123").trim();
-    if (authHeader.startsWith("Bearer ")) {
-        try {
-            const decoded = atob(authHeader.replace("Bearer ", ""));
-            return decoded.startsWith(expected + ":");
-        } catch {
-            return false;
-        }
-    }
-    return authHeader === expected;
-}
+import { initDb, verifyAuth, getAllSettings, setSetting, json, handleOptions } from "../_db.js";
 
 export async function onRequestOptions() {
     return handleOptions();
@@ -22,35 +8,47 @@ export async function onRequestOptions() {
 // GET: Get all store settings
 export async function onRequestGet(context) {
     const { request, env } = context;
-    if (!verifyAuth(request, env)) {
+    if (!await verifyAuth(request, env)) {
         return json({ success: false, error: "Unauthorized" }, 401);
     }
     await initDb(env);
 
-    let settings = {};
-    if (env.DB) {
-        const rows = await env.DB.prepare("SELECT key, value FROM settings").all();
-        if (rows && rows.results) {
-            for (const r of rows.results) {
-                try {
-                    settings[r.key] = JSON.parse(r.value);
-                } catch {
-                    settings[r.key] = r.value;
-                }
-            }
-        }
-    }
+    const settings = await getAllSettings(env);
+
+    // Provide default fallbacks if missing
+    const data = {
+        site_name: settings.site_name || env.SITE_NAME || "UltraDNS Pro",
+        tagline: settings.tagline || env.TAGLINE || "High-Speed Private DNS for Banking & Global Access",
+        owner_name: settings.owner_name || env.OWNER_NAME || "Premium Services",
+        support_whatsapp: settings.support_whatsapp || env.SUPPORT_WHATSAPP || "",
+        support_telegram: settings.support_telegram || env.SUPPORT_TELEGRAM || "",
+        main_api_url: settings.main_api_url || env.MAIN_API_URL || "https://dnshub.pages.dev",
+        reseller_api_key: settings.reseller_api_key || env.RESELLER_API_KEY || "",
+        currency: settings.currency || env.CURRENCY || "SAR",
+        currency_symbol: settings.currency_symbol || env.CURRENCY_SYMBOL || "﷼",
+        notice: settings.notice || env.NOTICE || "⚡ Instant DNS activation after payment verification! 24/7 dedicated support.",
+        payment_methods: settings.payment_methods || [
+            { id: "stcpay", name: "STC Pay", number: "0501234567", account_name: "Personal", instructions: "Send to this STC Pay number & copy TrxID." },
+            { id: "urpay", name: "Urpay", number: "0501234567", account_name: "Personal", instructions: "Send via Urpay & copy TrxID." },
+            { id: "bkash", name: "bKash (Send Money)", number: "01700000000", account_name: "Personal", instructions: "Send Money to bKash & copy TrxID." }
+        ],
+        plans: settings.plans || [
+            { id: "1m", name: "1 Month Pass", duration_days: 30, price: 15, popular: false, features: ["30 Days Validity", "All Banking Apps Supported", "Zero Speed Drop", "Dedicated Support"] },
+            { id: "3m", name: "3 Months Saver", duration_days: 90, price: 40, popular: true, badge: "MOST POPULAR", features: ["90 Days Validity", "Priority High-Speed Server", "All VoIP & Banking Apps", "24/7 Priority Support"] },
+            { id: "1y", name: "1 Year VIP Access", duration_days: 365, price: 130, popular: false, badge: "BEST VALUE", features: ["365 Days Uninterrupted", "VIP Dedicated Routing", "All Apps & HD VoIP", "Lifetime Replacement Guarantee"] }
+        ]
+    };
 
     return json({
         success: true,
-        data: settings
+        data: data
     });
 }
 
 // POST: Update store settings
 export async function onRequestPost(context) {
     const { request, env } = context;
-    if (!verifyAuth(request, env)) {
+    if (!await verifyAuth(request, env)) {
         return json({ success: false, error: "Unauthorized" }, 401);
     }
     await initDb(env);
@@ -62,18 +60,21 @@ export async function onRequestPost(context) {
             return json({ success: false, error: "D1 Database not configured" }, 500);
         }
 
+        // Save each field into D1
         for (const [key, val] of Object.entries(body)) {
-            const valStr = typeof val === "object" ? JSON.stringify(val) : String(val);
-            await env.DB.prepare(`
-                INSERT INTO settings (key, value, updated_at) 
-                VALUES (?, ?, CURRENT_TIMESTAMP)
-                ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
-            `).bind(key, valStr).run();
+            // If updating new admin password
+            if (key === "new_password") {
+                if (val && String(val).trim()) {
+                    await setSetting(env, "admin_password", String(val).trim());
+                }
+                continue;
+            }
+            await setSetting(env, key, val);
         }
 
         return json({
             success: true,
-            message: "Settings updated successfully!"
+            message: "Settings saved successfully to database!"
         });
     } catch (e) {
         return json({ success: false, error: e.message }, 500);
