@@ -1,0 +1,19 @@
+name = "reseller-storefront"
+compatibility_date = "2026-08-30"
+pages_build_output_dir = "public"
+
+# D1 Database Binding for Reseller Store
+# Reseller binds their D1 database here as "DB"
+[[d1_databases]]
+binding = "DB"
+database_name = "store_db"
+database_id = "YOUR_D1_DATABASE_ID"
+
+[vars]
+SITE_NAME = "UltraDNS Pro"
+TAGLINE = "High-Speed Private DNS for Banking & Global Access"
+OWNER_NAME = "Premium Services"
+SUPPORT_WHATSAPP = "+966500000000"
+CURRENCY = "SAR"
+CURRENCY_SYMBOL = "﷼"
+MAIN_API_URL = "https://dnshub.pages.dev"
