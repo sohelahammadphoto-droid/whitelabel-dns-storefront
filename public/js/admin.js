@@ -268,7 +268,6 @@ async function handleGenerateTestPin(e) {
     btn.textContent = "⚡ Generating 30-Min Trial...";
 
     const payload = {
-        username: document.getElementById("test-pin-username").value.trim(),
         phone: document.getElementById("test-pin-phone").value.trim(),
         note: document.getElementById("test-pin-note").value.trim()
     };
@@ -298,7 +297,7 @@ async function handleGenerateTestPin(e) {
                     <span class="badge badge-approved">⚡ 30 MIN TRIAL</span>
                 </div>
                 <div style="font-size: 13px; color: #cbd5e1; line-height: 1.7; margin-bottom: 15px;">
-                    <div>👤 Test PIN / Username: <b style="color:#fff; font-size:14px;">${d.username}</b></div>
+                    <div>👤 Random Test PIN: <b style="color:#fff; font-size:15px; font-family:monospace;">${d.username}</b></div>
                     <div>🌐 DNS Hostname: <code style="color:#38bdf8; font-weight:bold; font-size:13px;">${d.dns_url}</code></div>
                     <div>⏱️ Validity: <b style="color:#fbbf24;">30 Minutes (${d.expires_at || 'Just Now'})</b></div>
                 </div>
@@ -334,9 +333,9 @@ async function handleManualGenerate(e) {
     btn.textContent = "Generating...";
 
     const payload = {
-        username: document.getElementById("gen-username").value.trim(),
         phone: document.getElementById("gen-phone").value.trim(),
-        duration_days: parseInt(document.getElementById("gen-duration").value, 10)
+        duration_days: parseInt(document.getElementById("gen-duration").value, 10),
+        note: (document.getElementById("gen-note") ? document.getElementById("gen-note").value.trim() : "")
     };
 
     try {
