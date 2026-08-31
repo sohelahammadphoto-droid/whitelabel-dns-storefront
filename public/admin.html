@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Admin — Reseller Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-card">
+            <h2 style="font-size: 24px; font-weight: 800; margin-bottom: 8px;">🔐 Store Admin</h2>
+            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 25px;">Enter your store admin password to manage orders and settings.</p>
+            <form onsubmit="handleLogin(event)">
+                <input type="password" id="admin-pass" class="form-control" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff; margin-bottom: 15px; outline:none;" placeholder="Admin Password" required>
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 14px;" id="login-btn">
+                    Login to Dashboard
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin App Layout -->
+    <div class="admin-layout" id="admin-app" style="display: none;">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div>
+                <div class="admin-brand">
+                    <span>⚡ Store Admin</span>
+                </div>
+                <ul class="admin-nav">
+                    <li class="admin-nav-item active" onclick="showTab('orders')">📋 Orders & Sales</li>
+                    <li class="admin-nav-item" onclick="showTab('generate')">⚡ Manual PIN Gen</li>
+                    <li class="admin-nav-item" onclick="showTab('settings')">⚙️ Store Settings</li>
+                    <li class="admin-nav-item"><a href="/" target="_blank" style="color:inherit; text-decoration:none;">🌐 View Storefront</a></li>
+                </ul>
+            </div>
+            <div>
+                <button class="btn btn-danger" style="width: 100%;" onclick="handleLogout()">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+            <!-- Topbar -->
+            <div class="admin-topbar">
+                <div>
+                    <h1 class="admin-title" id="page-title">Orders & Sales</h1>
+                    <span style="color: var(--text-muted); font-size: 13px;">Manage customer payments and DNS activations</span>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 12px; color: var(--text-muted);">Main API Balance</div>
+                    <div style="font-size: 20px; font-weight: 800; color: #38bdf8;" id="reseller-balance">-- Credits</div>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Orders</div>
+                    <div class="stat-val" id="stat-total">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Pending Approval</div>
+                    <div class="stat-val" style="color: #fbbf24;" id="stat-pending">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Approved & Active</div>
+                    <div class="stat-val" style="color: #34d399;" id="stat-approved">0</div>
+                </div>
+            </div>
+
+            <!-- TAB 1: ORDERS -->
+            <div id="tab-orders" class="tab-content">
+                <div class="card-box">
+                    <div class="box-header">
+                        <div class="box-title">Recent Customer Orders</div>
+                        <div>
+                            <button class="btn btn-primary btn-sm" onclick="loadOrders()">🔄 Refresh</button>
+                        </div>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="order-table">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Plan</th>
+                                    <th>Method & TrxID</th>
+                                    <th>Status</th>
+                                    <th>DNS PIN</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orders-tbody">
+                                <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading orders...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: MANUAL GENERATE -->
+            <div id="tab-generate" class="tab-content" style="display: none;">
+                <div class="card-box" style="max-width: 500px;">
+                    <div class="box-title" style="margin-bottom: 15px;">Manual DNS PIN Generation</div>
+                    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Directly create a client PIN from your main platform API balance (for walk-in or offline cash customers).</p>
+                    <form onsubmit="handleManualGenerate(event)">
+                        <div style="margin-bottom: 14px;">
+                            <label style="display:block; font-size: 12px; margin-bottom: 4px;">Custom Username / PIN (Optional)</label>
+                            <input type="text" id="gen-username" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" placeholder="Leave empty for auto-PIN">
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <label style="display:block; font-size: 12px; margin-bottom: 4px;">Customer Phone Number</label>
+                            <input type="text" id="gen-phone" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" placeholder="e.g. 0501234567" required>
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <label style="display:block; font-size: 12px; margin-bottom: 4px;">Duration Plan</label>
+                            <select id="gen-duration" style="width: 100%; padding: 10px; border-radius: 6px; background: #131b2e; border: 1px solid var(--border-color); color:#fff;">
+                                <option value="30">1 Month (30 Days)</option>
+                                <option value="90">3 Months (90 Days)</option>
+                                <option value="180">6 Months (180 Days)</option>
+                                <option value="365">1 Year (365 Days)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;" id="gen-submit-btn">⚡ Generate DNS PIN</button>
+                    </form>
+
+                    <div id="gen-result" style="margin-top: 20px; display: none; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <!-- Result -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: SETTINGS -->
+            <div id="tab-settings" class="tab-content" style="display: none;">
+                <div class="card-box" style="max-width: 600px;">
+                    <div class="box-title" style="margin-bottom: 15px;">Storefront Branding & Payment Settings</div>
+                    <form onsubmit="handleSaveSettings(event)">
+                        <div style="margin-bottom: 14px;">
+                            <label style="display:block; font-size: 12px; margin-bottom: 4px;">Store Name</label>
+                            <input type="text" id="setting-sitename" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" required>
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <label style="display:block; font-size: 12px; margin-bottom: 4px;">Tagline</label>
+                            <input type="text" id="setting-tagline" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" required>
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <label style="display:block; font-size: 12px; margin-bottom: 4px;">Support WhatsApp Number</label>
+                            <input type="text" id="setting-whatsapp" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;" placeholder="+966500000000">
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <label style="display:block; font-size: 12px; margin-bottom: 4px;">Header Notice Bar Text</label>
+                            <input type="text" id="setting-notice" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color:#fff;">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">💾 Save Settings</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/admin.js"></script>
+</body>
+</html>
