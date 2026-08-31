@@ -37,6 +37,10 @@ export async function onRequestGet(context) {
         smtp_gmail_app_password: settings.smtp_gmail_app_password || "",
         smtp_sender_name: settings.smtp_sender_name || (settings.site_name || "UltraDNS Pro"),
 
+        // Anti-Bot & Turnstile settings
+        turnstile_site_key: settings.turnstile_site_key || "",
+        turnstile_secret_key: settings.turnstile_secret_key || "",
+
         payment_methods: settings.payment_methods || [
             { id: "stcpay", name: "STC Pay", number: "0501234567", account_name: "Personal", instructions: "Send to this STC Pay number & copy TrxID." },
             { id: "urpay", name: "Urpay", number: "0501234567", account_name: "Personal", instructions: "Send via Urpay & copy TrxID." },
