@@ -59,9 +59,6 @@ async function handleInitialSetup(e) {
             authToken = data.token;
             localStorage.setItem("store_admin_token", authToken);
             alert("🎉 Setup Complete! Your store has been configured in your D1 Database.");
-            if (data.reseller && data.reseller.credits !== undefined) {
-                document.getElementById("reseller-balance").textContent = `${data.reseller.credits} Credits`;
-            }
             document.getElementById("setup-screen").style.display = "none";
             showDashboard();
         } else {
@@ -93,9 +90,6 @@ async function handleLogin(e) {
         if (data.success) {
             authToken = data.token;
             localStorage.setItem("store_admin_token", authToken);
-            if (data.reseller && data.reseller.credits !== undefined) {
-                document.getElementById("reseller-balance").textContent = `${data.reseller.credits} Credits`;
-            }
             showDashboard();
         } else {
             if (data.needs_setup) {
@@ -123,7 +117,26 @@ function showDashboard() {
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("admin-app").style.display = "flex";
     loadOrders();
+    loadBalance();
     loadSettings();
+}
+
+async function loadBalance() {
+    try {
+        const res = await fetch("/api/admin/balance", {
+            headers: { "Authorization": `Bearer ${authToken}` }
+        });
+        const json = await res.json();
+        if (json.success) {
+            const mainEl = document.getElementById("reseller-balance");
+            const testEl = document.getElementById("reseller-test-balance");
+            const testBadge = document.getElementById("test-pin-badge-count");
+
+            if (mainEl) mainEl.textContent = `${json.credits} Credits`;
+            if (testEl) testEl.textContent = `${json.test_credits} Avail`;
+            if (testBadge) testBadge.textContent = `${json.test_credits} Test PINs Available`;
+        }
+    } catch (_) {}
 }
 
 function showTab(tabName) {
@@ -135,9 +148,10 @@ function showTab(tabName) {
 
     const titles = { 
         orders: "Orders & Sales", 
-        generate: "Manual PIN Gen", 
-        email: "Gmail OTP & Verification Settings",
-        settings: "Store Settings" 
+        testpin: "🧪 30-Minute Free Test PIN",
+        generate: "⚡ Full Pass PIN Gen", 
+        email: "📧 Gmail OTP & Verification Settings",
+        settings: "⚙️ Store Settings" 
     };
     document.getElementById("page-title").textContent = titles[tabName] || "Dashboard";
 }
@@ -214,6 +228,7 @@ async function approveOrder(orderId) {
         if (data.success) {
             alert(`🎉 ${data.message}\n\nGenerated PIN: ${data.data.client_id}\nDNS Hostname: ${data.data.dns_url}`);
             loadOrders();
+            loadBalance();
         } else {
             alert("❌ Approval failed: " + (data.error || "Unknown error"));
         }
@@ -243,6 +258,75 @@ async function rejectOrder(orderId) {
     }
 }
 
+// ----------------------------------------------------
+// 30-Minute Test PIN Handler
+// ----------------------------------------------------
+async function handleGenerateTestPin(e) {
+    e.preventDefault();
+    const btn = document.getElementById("test-pin-submit-btn");
+    btn.disabled = true;
+    btn.textContent = "⚡ Generating 30-Min Trial...";
+
+    const payload = {
+        username: document.getElementById("test-pin-username").value.trim(),
+        phone: document.getElementById("test-pin-phone").value.trim(),
+        note: document.getElementById("test-pin-note").value.trim()
+    };
+
+    try {
+        const res = await fetch("/api/admin/test-pin", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${authToken}`
+            },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        const resBox = document.getElementById("test-pin-result");
+        resBox.style.display = "block";
+
+        if (data.success) {
+            const d = data.data;
+            const cleanPhone = payload.phone.replace(/[^0-9]/g, "");
+            const waLink = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(d.whatsapp_share_text)}` : `https://api.whatsapp.com/send?text=${encodeURIComponent(d.whatsapp_share_text)}`;
+
+            resBox.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                    <div style="color: #34d399; font-weight: 800; font-size: 16px;">🎉 30-Minute Test PIN Created!</div>
+                    <span class="badge badge-approved">⚡ 30 MIN TRIAL</span>
+                </div>
+                <div style="font-size: 13px; color: #cbd5e1; line-height: 1.7; margin-bottom: 15px;">
+                    <div>👤 Test PIN / Username: <b style="color:#fff; font-size:14px;">${d.username}</b></div>
+                    <div>🌐 DNS Hostname: <code style="color:#38bdf8; font-weight:bold; font-size:13px;">${d.dns_url}</code></div>
+                    <div>⏱️ Validity: <b style="color:#fbbf24;">30 Minutes (${d.expires_at || 'Just Now'})</b></div>
+                </div>
+                <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="navigator.clipboard.writeText('${d.dns_url}').then(() => alert('Copied Hostname: ${d.dns_url}'))">
+                        📋 Copy Hostname
+                    </button>
+                    <a href="${waLink}" target="_blank" class="btn btn-success btn-sm" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                        💬 Share on WhatsApp
+                    </a>
+                </div>
+            `;
+            loadBalance();
+            loadOrders();
+        } else {
+            resBox.innerHTML = `<div style="color: #f87171; font-weight:700;">❌ ${data.error || "Generation failed"}</div>`;
+        }
+    } catch (err) {
+        alert("Error: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "⚡ Generate 30-Min Test PIN";
+    }
+}
+
+// ----------------------------------------------------
+// Full Pass Manual PIN Handler
+// ----------------------------------------------------
 async function handleManualGenerate(e) {
     e.preventDefault();
     const btn = document.getElementById("gen-submit-btn");
@@ -281,6 +365,7 @@ async function handleManualGenerate(e) {
                 <button class="btn btn-primary btn-sm" style="margin-top: 10px;" onclick="navigator.clipboard.writeText('${d.dns_url}').then(() => alert('Copied!'))">Copy Hostname</button>
             `;
             loadOrders();
+            loadBalance();
         } else {
             resBox.innerHTML = `<div style="color: #f87171; font-weight:700;">❌ ${data.error || "Generation failed"}</div>`;
         }
@@ -288,7 +373,7 @@ async function handleManualGenerate(e) {
         alert("Error: " + err.message);
     } finally {
         btn.disabled = false;
-        btn.textContent = "⚡ Generate DNS PIN";
+        btn.textContent = "⚡ Generate Paid DNS PIN";
     }
 }
 
@@ -442,6 +527,7 @@ async function handleSaveSettings(e) {
             }
             alert("✅ Store settings saved successfully to your D1 Database!");
             loadSettings();
+            loadBalance();
         } else {
             alert("❌ Failed to save: " + data.error);
         }
