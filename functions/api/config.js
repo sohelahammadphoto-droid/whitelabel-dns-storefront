@@ -21,6 +21,7 @@ export async function onRequestGet(context) {
         currency: dbSettings.currency || env.CURRENCY || "SAR",
         currency_symbol: dbSettings.currency_symbol || env.CURRENCY_SYMBOL || "﷼",
         notice: dbSettings.notice || env.NOTICE || "⚡ Instant DNS activation after payment verification! 24/7 dedicated support.",
+        turnstile_site_key: dbSettings.turnstile_site_key || "",
         payment_methods: dbSettings.payment_methods || [
             { id: "stcpay", name: "STC Pay", number: "0501234567", account_name: "Personal", instructions: "Send to this STC Pay number & copy TrxID." },
             { id: "urpay", name: "Urpay", number: "0501234567", account_name: "Personal", instructions: "Send via Urpay & copy TrxID." },
