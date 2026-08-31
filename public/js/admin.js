@@ -130,8 +130,15 @@ function showTab(tabName) {
     document.querySelectorAll(".tab-content").forEach(el => el.style.display = "none");
     document.querySelectorAll(".admin-nav-item").forEach(el => el.classList.remove("active"));
     
-    document.getElementById(`tab-${tabName}`).style.display = "block";
-    const titles = { orders: "Orders & Sales", generate: "Manual PIN Gen", settings: "Store Settings" };
+    const targetTab = document.getElementById(`tab-${tabName}`);
+    if (targetTab) targetTab.style.display = "block";
+
+    const titles = { 
+        orders: "Orders & Sales", 
+        generate: "Manual PIN Gen", 
+        email: "Gmail OTP & Verification Settings",
+        settings: "Store Settings" 
+    };
     document.getElementById("page-title").textContent = titles[tabName] || "Dashboard";
 }
 
@@ -162,7 +169,7 @@ async function loadOrders() {
         tbody.innerHTML = orders.map(o => `
             <tr>
                 <td><b style="color:#fff;">${o.order_id}</b><br><span style="font-size:11px; color:var(--text-muted);">${o.created_at || ''}</span></td>
-                <td><b>${o.customer_name}</b><br><span style="color:#38bdf8; font-size:12px;">${o.customer_phone}</span></td>
+                <td><b>${o.customer_name}</b><br><span style="color:#38bdf8; font-size:12px;">${o.customer_phone}</span>${o.customer_email ? `<br><span style="color:#94a3b8; font-size:11px;">${o.customer_email}</span>` : ''}</td>
                 <td>${o.plan_name}<br><b style="color:#fff;">${o.amount} ${o.currency}</b></td>
                 <td><b>${o.payment_method}</b><br><code style="color:#a78bfa; font-size:11px;">${o.trx_id}</code></td>
                 <td><span class="badge badge-${o.status}">${o.status}</span></td>
@@ -299,8 +306,106 @@ async function loadSettings() {
             if (s.tagline) document.getElementById("setting-tagline").value = s.tagline;
             if (s.support_whatsapp) document.getElementById("setting-whatsapp").value = s.support_whatsapp;
             if (s.notice) document.getElementById("setting-notice").value = s.notice;
+
+            // Email Settings
+            if (s.email_provider) {
+                document.getElementById("setting-emailprovider").value = s.email_provider;
+            }
+            if (s.brevo_api_key) document.getElementById("setting-brevoapikey").value = s.brevo_api_key;
+            if (s.brevo_sender_email) document.getElementById("setting-brevosenderemail").value = s.brevo_sender_email;
+            if (s.brevo_sender_name) document.getElementById("setting-brevosendername").value = s.brevo_sender_name;
+            if (s.smtp_gmail_email) document.getElementById("setting-gmailemail").value = s.smtp_gmail_email;
+            if (s.smtp_gmail_app_password) document.getElementById("setting-gmailapppassword").value = s.smtp_gmail_app_password;
+            if (s.smtp_sender_name) document.getElementById("setting-gmailsendername").value = s.smtp_sender_name;
+
+            toggleEmailProviderFields();
         }
     } catch (_) {}
+}
+
+function toggleEmailProviderFields() {
+    const val = document.getElementById("setting-emailprovider").value;
+    const boxBrevo = document.getElementById("box-brevo");
+    const boxGmail = document.getElementById("box-gmail");
+
+    if (boxBrevo) boxBrevo.style.display = (val === "brevo") ? "block" : "none";
+    if (boxGmail) boxGmail.style.display = (val === "gmail_smtp") ? "block" : "none";
+}
+
+async function handleSaveEmailSettings(e) {
+    e.preventDefault();
+    const payload = {
+        email_provider: document.getElementById("setting-emailprovider").value,
+        brevo_api_key: document.getElementById("setting-brevoapikey").value.trim(),
+        brevo_sender_email: document.getElementById("setting-brevosenderemail").value.trim(),
+        brevo_sender_name: document.getElementById("setting-brevosendername").value.trim(),
+        smtp_gmail_email: document.getElementById("setting-gmailemail").value.trim(),
+        smtp_gmail_app_password: document.getElementById("setting-gmailapppassword").value.trim(),
+        smtp_sender_name: document.getElementById("setting-gmailsendername").value.trim()
+    };
+
+    try {
+        const res = await fetch("/api/admin/settings", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${authToken}`
+            },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert("✅ Email & OTP settings saved successfully to your D1 Database!");
+            loadSettings();
+        } else {
+            alert("❌ Failed to save: " + data.error);
+        }
+    } catch (err) {
+        alert("Error: " + err.message);
+    }
+}
+
+async function handleSendTestEmail() {
+    const email = document.getElementById("test-email-recipient").value.trim();
+    const statusBox = document.getElementById("test-email-status");
+    const btn = document.getElementById("test-email-btn");
+
+    if (!email || !email.includes("@")) {
+        alert("Please enter a valid recipient email");
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Sending Test OTP...";
+    statusBox.style.display = "block";
+    statusBox.style.color = "#fbbf24";
+    statusBox.textContent = "Dispatching test email...";
+
+    try {
+        const res = await fetch("/api/admin/test-email", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ test_email: email })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            statusBox.style.color = "#34d399";
+            statusBox.innerHTML = `✅ ${data.message}`;
+        } else {
+            statusBox.style.color = "#f87171";
+            statusBox.innerHTML = `❌ ${data.error}`;
+        }
+    } catch (err) {
+        statusBox.style.color = "#f87171";
+        statusBox.textContent = "Error: " + err.message;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Send Test OTP";
+    }
 }
 
 async function handleSaveSettings(e) {
@@ -335,7 +440,7 @@ async function handleSaveSettings(e) {
                 localStorage.setItem("store_admin_token", authToken);
                 document.getElementById("setting-newpassword").value = "";
             }
-            alert("✅ Settings saved successfully to your D1 Database!");
+            alert("✅ Store settings saved successfully to your D1 Database!");
             loadSettings();
         } else {
             alert("❌ Failed to save: " + data.error);
