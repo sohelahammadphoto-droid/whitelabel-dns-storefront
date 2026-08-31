@@ -1,5 +1,6 @@
 // functions/api/order.js — Public & Authenticated Customer Order Submission API
 import { initDb, verifyCustomerAuth, json, handleOptions } from "./_db.js";
+import { verifyAntiBot } from "./_antibot.js";
 
 export async function onRequestOptions() {
     return handleOptions();
@@ -11,6 +12,12 @@ export async function onRequestPost(context) {
 
     try {
         const body = await request.json();
+
+        // 🛡️ Invisible Anti-Bot & Anti-Scraping Check
+        const antiBot = await verifyAntiBot(request, body, env);
+        if (!antiBot.ok) {
+            return json({ success: false, error: antiBot.error }, antiBot.status || 400);
+        }
         const customerName = (body.customer_name || "").trim();
         const customerPhone = (body.customer_phone || "").trim();
         const customerEmail = (body.customer_email || "").trim().toLowerCase();
