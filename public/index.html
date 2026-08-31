@@ -211,6 +211,28 @@
                     ✨ Create Account
                 </button>
             </form>
+
+            <!-- OTP Verification Form -->
+            <form id="otp-form" style="display: none;" onsubmit="handleVerifyOtp(event)">
+                <h3 class="modal-title" style="font-size: 20px;">📧 Verify Your Gmail</h3>
+                <p class="modal-desc">
+                    We sent a 6-digit code to <b id="otp-display-email" style="color: #38bdf8;">user@gmail.com</b>. Check your inbox and spam folder.
+                </p>
+
+                <div class="form-group">
+                    <label class="form-label">Enter 6-Digit Code</label>
+                    <input type="text" id="otp-input-code" class="form-control" placeholder="123456" maxlength="6" style="text-align: center; font-size: 24px; letter-spacing: 6px; font-weight: 800; font-family: monospace;" required>
+                </div>
+
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;" id="otp-submit-btn">
+                    ✓ Verify & Activate Account
+                </button>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; font-size: 12px;">
+                    <button type="button" class="logout-btn" onclick="switchAuthTab('register')">← Back to Register</button>
+                    <button type="button" class="logout-btn" id="otp-resend-btn" onclick="handleResendOtp()">Resend Code</button>
+                </div>
+            </form>
         </div>
     </div>
 
