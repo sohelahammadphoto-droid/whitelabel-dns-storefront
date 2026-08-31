@@ -1,0 +1,61 @@
+{
+  "site_name": "UltraDNS Pro",
+  "tagline": "High-Speed Private DNS for Banking & Global Access",
+  "owner_name": "Premium Services",
+  "support_whatsapp": "+966500000000",
+  "support_telegram": "https://t.me/yourusername",
+  "currency": "SAR",
+  "currency_symbol": "﷼",
+  "notice": "⚡ Instant DNS activation after payment verification! 24/7 dedicated support.",
+  "payment_methods": [
+    {
+      "id": "stcpay",
+      "name": "STC Pay",
+      "number": "0501234567",
+      "account_name": "Your Name",
+      "instructions": "Send money to this STC Pay number and enter the Transaction ID below."
+    },
+    {
+      "id": "urpay",
+      "name": "Urpay",
+      "number": "0501234567",
+      "account_name": "Your Name",
+      "instructions": "Transfer via Urpay and provide your payment reference."
+    },
+    {
+      "id": "bkash",
+      "name": "bKash (Send Money)",
+      "number": "01700000000",
+      "account_name": "Personal",
+      "instructions": "Send Money to this personal bKash number and enter TrxID."
+    }
+  ],
+  "plans": [
+    {
+      "id": "1m",
+      "name": "1 Month Pass",
+      "duration_days": 30,
+      "price": 15,
+      "popular": false,
+      "features": ["30 Days Validity", "All Banking Apps Supported", "Zero Speed Drop", "Dedicated Support"]
+    },
+    {
+      "id": "3m",
+      "name": "3 Months Saver",
+      "duration_days": 90,
+      "price": 40,
+      "popular": true,
+      "badge": "MOST POPULAR",
+      "features": ["90 Days Validity", "Priority High-Speed Server", "All VoIP & Banking Apps", "24/7 Priority Support"]
+    },
+    {
+      "id": "1y",
+      "name": "1 Year VIP Access",
+      "duration_days": 365,
+      "price": 130,
+      "popular": false,
+      "badge": "BEST VALUE",
+      "features": ["365 Days Uninterrupted", "VIP Dedicated Routing", "All Apps & HD VoIP", "Lifetime Replacement Guarantee"]
+    }
+  ]
+}
