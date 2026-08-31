@@ -164,6 +164,7 @@
 
             <!-- Login Form -->
             <form id="login-form" onsubmit="handleCustomerLogin(event)">
+                <div style="display:none; opacity:0; position:absolute; left:-9999px;"><input type="text" name="_hp_company" tabindex="-1" autocomplete="off"></div>
                 <h3 class="modal-title" style="font-size: 20px;">Welcome Back</h3>
                 <p class="modal-desc">Sign in with your email to view your private DNS keys and orders.</p>
 
@@ -184,6 +185,7 @@
 
             <!-- Register Form -->
             <form id="register-form" style="display: none;" onsubmit="handleCustomerRegister(event)">
+                <div style="display:none; opacity:0; position:absolute; left:-9999px;"><input type="text" name="_hp_fax" tabindex="-1" autocomplete="off"></div>
                 <h3 class="modal-title" style="font-size: 20px;">Create Customer Account</h3>
                 <p class="modal-desc">Register with your Gmail to easily manage and renew your private DNS.</p>
 
@@ -282,6 +284,7 @@
             <p class="modal-desc" id="modal-plan-desc">Complete your payment and submit details for instant activation.</p>
 
             <form id="order-form" onsubmit="submitOrder(event)">
+                <div style="display:none; opacity:0; position:absolute; left:-9999px;"><input type="text" name="_hp_company" tabindex="-1" autocomplete="off"></div>
                 <input type="hidden" id="order-plan-id">
                 
                 <div class="form-group">
