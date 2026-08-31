@@ -122,6 +122,15 @@ export async function onRequestPost(context) {
                 WHERE order_id = ?
             `).bind(clientId, dnsUrl, expireDate, order_id).run();
 
+            const waMessage =
+                `🎉 *DNS ACTIVATION COMPLETED* 🎉\n\n` +
+                `👤 *Username / PIN:* \`${clientId}\`\n` +
+                `🌐 *Private DNS Address:* \`${dnsUrl}\`\n` +
+                `⏳ *Validity:* *${order.duration_days || 30} Days* (Expires: ${expireDate})\n\n` +
+                `📲 *Android Setup:* Settings ➔ Connections ➔ Private DNS ➔ Specified DNS ➔ Enter: \`${dnsUrl}\`\n` +
+                `🍏 *iOS 1-Click Profile:* https://dnshub.pages.dev/api/public/ios-profile?username=${clientId}\n\n` +
+                `🔥 Ultra-Fast Ad-Free Private DNS is now active for your device!`;
+
             return json({
                 success: true,
                 message: "Order approved & DNS generated successfully!",
@@ -130,7 +139,9 @@ export async function onRequestPost(context) {
                     client_id: clientId,
                     dns_url: dnsUrl,
                     expire_date: expireDate,
-                    status: "approved"
+                    status: "approved",
+                    phone: order.customer_phone,
+                    whatsapp_share_text: waMessage
                 }
             });
         }
