@@ -27,6 +27,16 @@ export async function onRequestGet(context) {
         currency: settings.currency || env.CURRENCY || "SAR",
         currency_symbol: settings.currency_symbol || env.CURRENCY_SYMBOL || "﷼",
         notice: settings.notice || env.NOTICE || "⚡ Instant DNS activation after payment verification! 24/7 dedicated support.",
+        
+        // Email & OTP verification settings
+        email_provider: settings.email_provider || "none", // none, brevo, gmail_smtp
+        brevo_api_key: settings.brevo_api_key || "",
+        brevo_sender_email: settings.brevo_sender_email || "",
+        brevo_sender_name: settings.brevo_sender_name || (settings.site_name || "UltraDNS Pro"),
+        smtp_gmail_email: settings.smtp_gmail_email || "",
+        smtp_gmail_app_password: settings.smtp_gmail_app_password || "",
+        smtp_sender_name: settings.smtp_sender_name || (settings.site_name || "UltraDNS Pro"),
+
         payment_methods: settings.payment_methods || [
             { id: "stcpay", name: "STC Pay", number: "0501234567", account_name: "Personal", instructions: "Send to this STC Pay number & copy TrxID." },
             { id: "urpay", name: "Urpay", number: "0501234567", account_name: "Personal", instructions: "Send via Urpay & copy TrxID." },
