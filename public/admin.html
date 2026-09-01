@@ -830,7 +830,11 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Telegram Admin Chat ID</label>
-                                <input type="text" id="setting-telegramchatid" class="form-control" placeholder="e.g. 123456789 or @yourchannel">
+                                <input type="text" id="setting-telegramchatid" class="form-control" placeholder="e.g. 123456789 (Numeric Chat ID)">
+                            </div>
+                            <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="handleSendTestTelegram()" id="test-telegram-btn">🧪 Send Test Telegram Alert</button>
+                                <span id="test-telegram-status" style="font-size: 12px; display: none;"></span>
                             </div>
                         </div>
 

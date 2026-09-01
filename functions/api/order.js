@@ -6,29 +6,38 @@ export async function onRequestOptions() {
     return handleOptions();
 }
 
+// Escape HTML special characters for Telegram HTML mode
+function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+}
+
 // Telegram alert helper
 async function sendTelegramOrderAlert(env, orderData) {
     try {
         const s = await getAllSettings(env);
-        const token = s.telegram_bot_token || env.TELEGRAM_BOT_TOKEN;
-        const chatId = s.telegram_chat_id || env.TELEGRAM_CHAT_ID;
+        const token = (s.telegram_bot_token || env.TELEGRAM_BOT_TOKEN || "").trim();
+        const chatId = (s.telegram_chat_id || env.TELEGRAM_CHAT_ID || "").trim();
         const isEnabled = s.telegram_alerts_enabled !== undefined ? Boolean(s.telegram_alerts_enabled) : true;
 
         if (!token || !chatId || !isEnabled) return;
 
-        const text = `🚨 *New Store Order Received!*
-━━━━━━━━━━━━━━━━━━━
-🆔 *Order ID:* \`${orderData.orderId}\`
-👤 *Customer:* ${orderData.customerName}
-📞 *Phone:* \`${orderData.customerPhone}\`
-📧 *Email:* ${orderData.finalEmail || 'N/A'}
-📦 *Plan:* ${orderData.planName} (${orderData.durationDays} Days)
-💰 *Amount:* *${orderData.finalAmount} ${orderData.currency}*
-💳 *Method:* ${orderData.paymentMethod}
-📝 *TrxID:* \`${orderData.trxId}\`
-${orderData.couponCode ? `🎟️ *Coupon:* \`${orderData.couponCode}\` (Saved ${orderData.discountAmount} ${orderData.currency})` : ''}
-━━━━━━━━━━━━━━━━━━━
-⚡ Login to your Store Admin to approve.`;
+        const text = `🚨 <b>New Store Order Received!</b>\n` +
+            `━━━━━━━━━━━━━━━━━━━\n` +
+            `🆔 <b>Order ID:</b> <code>${escapeHtml(orderData.orderId)}</code>\n` +
+            `👤 <b>Customer:</b> ${escapeHtml(orderData.customerName)}\n` +
+            `📞 <b>Phone:</b> <code>${escapeHtml(orderData.customerPhone)}</code>\n` +
+            `📧 <b>Email:</b> ${escapeHtml(orderData.finalEmail || 'N/A')}\n` +
+            `📦 <b>Plan:</b> ${escapeHtml(orderData.planName)} (${orderData.durationDays} Days)\n` +
+            `💰 <b>Amount:</b> <b>${orderData.finalAmount} ${escapeHtml(orderData.currency)}</b>\n` +
+            `💳 <b>Method:</b> ${escapeHtml(orderData.paymentMethod)}\n` +
+            `📝 <b>TrxID:</b> <code>${escapeHtml(orderData.trxId)}</code>\n` +
+            (orderData.couponCode ? `🎟️ <b>Coupon:</b> <code>${escapeHtml(orderData.couponCode)}</code> (Saved ${orderData.discountAmount} ${escapeHtml(orderData.currency)})\n` : '') +
+            `━━━━━━━━━━━━━━━━━━━\n` +
+            `⚡ Login to Store Admin to approve.`;
 
         await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
             method: "POST",
@@ -36,7 +45,7 @@ ${orderData.couponCode ? `🎟️ *Coupon:* \`${orderData.couponCode}\` (Saved $
             body: JSON.stringify({
                 chat_id: chatId,
                 text: text,
-                parse_mode: "Markdown"
+                parse_mode: "HTML"
             })
         });
     } catch (err) {
@@ -130,11 +139,13 @@ export async function onRequestPost(context) {
             ).run();
         }
 
-        // Fire background Telegram notification
-        sendTelegramOrderAlert(env, {
-            orderId, customerName, customerPhone, finalEmail, planName, durationDays,
-            finalAmount, currency, paymentMethod, trxId, couponCode, discountAmount
-        });
+        // Send Telegram notification
+        try {
+            await sendTelegramOrderAlert(env, {
+                orderId, customerName, customerPhone, finalEmail, planName, durationDays,
+                finalAmount, currency, paymentMethod, trxId, couponCode, discountAmount
+            });
+        } catch (_) {}
 
         return json({
             success: true,

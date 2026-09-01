@@ -1249,6 +1249,47 @@ async function handleSendTestEmail() {
     }
 }
 
+async function handleSendTestTelegram() {
+    const btn = document.getElementById("test-telegram-btn");
+    const status = document.getElementById("test-telegram-status");
+    const botToken = document.getElementById("setting-telegrambottoken").value.trim();
+    const chatId = document.getElementById("setting-telegramchatid").value.trim();
+
+    if (!botToken || !chatId) {
+        alert("Please enter both Telegram Bot Token and Admin Chat ID first.");
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Sending Test Alert...";
+    status.style.display = "none";
+
+    try {
+        const res = await fetch("/api/admin/test-telegram", {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({ bot_token: botToken, chat_id: chatId })
+        });
+        const json = await res.json();
+
+        status.style.display = "inline-block";
+        if (json.success) {
+            status.style.color = "#34d399";
+            status.textContent = "✓ Test alert sent! Check your Telegram.";
+        } else {
+            status.style.color = "#f87171";
+            status.textContent = `❌ ${json.error || "Failed to send alert"}`;
+        }
+    } catch (e) {
+        status.style.display = "inline-block";
+        status.style.color = "#f87171";
+        status.textContent = "Error: " + e.message;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "🧪 Send Test Telegram Alert";
+    }
+}
+
 // ----------------------------------------------------
 // 8. Core API & Alert Settings Save
 // ----------------------------------------------------
