@@ -1,6 +1,12 @@
 import { initDb, verifyAuth, getResellerApiKey, getMainApiUrl, json, handleOptions } from "../_db.js";
 import { sendOrderApprovedEmail } from "../_email.js";
 
+export async function onRequest(context) {
+    if (context.request.method === "OPTIONS") return handleOptions();
+    if (context.request.method === "POST") return onRequestPost(context);
+    return onRequestGet(context);
+}
+
 export async function onRequestOptions() {
     return handleOptions();
 }

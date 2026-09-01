@@ -2,11 +2,20 @@
 import { initDb, verifyAuth, json, handleOptions } from "../_db.js";
 import { sendOtpEmail } from "../_email.js";
 
+export async function onRequest(context) {
+    if (context.request.method === "OPTIONS") return handleOptions();
+    return handleTestEmail(context);
+}
+
 export async function onRequestOptions() {
     return handleOptions();
 }
 
 export async function onRequestPost(context) {
+    return handleTestEmail(context);
+}
+
+async function handleTestEmail(context) {
     const { request, env } = context;
     await initDb(env);
 
