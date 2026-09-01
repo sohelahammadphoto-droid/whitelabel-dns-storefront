@@ -94,7 +94,24 @@ function applyThemeTokens() {
 function renderConfig() {
     if (!siteConfig) return;
 
-    // --- 1. Branding ---
+    // --- 1. Branding & Logo & Favicon ---
+    const logoImg = document.getElementById("site-logo-img");
+    const logoIcon = document.getElementById("site-logo-icon");
+
+    if (siteConfig.site_logo && logoImg) {
+        logoImg.src = siteConfig.site_logo;
+        logoImg.style.display = "inline-block";
+        if (logoIcon) logoIcon.style.display = "none";
+    } else {
+        if (logoImg) logoImg.style.display = "none";
+        if (logoIcon) logoIcon.style.display = "inline-flex";
+    }
+
+    if (siteConfig.site_favicon) {
+        const favEl = document.getElementById("site-favicon");
+        if (favEl) favEl.href = siteConfig.site_favicon;
+    }
+
     if (siteConfig.site_name) {
         const el = document.getElementById("site-name");
         if (el) el.textContent = siteConfig.site_name;
