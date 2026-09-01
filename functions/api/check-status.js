@@ -55,7 +55,9 @@ export async function onRequestGet(context) {
             return json({ success: false, error: "No active order or DNS key found with these details. Please check and try again." }, 404);
         }
 
-        const effectiveStatus = liveDnsStatus ? liveDnsStatus.status : (order?.status || "pending");
+        const isBanned = effectiveStatus === "rejected" || effectiveStatus === "banned" || effectiveStatus === "disabled";
+        const banReason = liveDnsStatus?.ban_reason || liveDnsStatus?.reason || (isBanned ? "⚠️ Payment Due / Anti-Theft Policy Violation" : null);
+        const detectedIps = liveDnsStatus?.detected_ips || liveDnsStatus?.violating_ips || liveDnsStatus?.ips || [];
 
         return json({
             success: true,
@@ -65,6 +67,10 @@ export async function onRequestGet(context) {
                 customer_phone: order?.customer_phone || "",
                 plan_name: order?.plan_name || `${liveDnsStatus?.duration_days || 30} Days Pass`,
                 status: effectiveStatus,
+                is_banned: isBanned,
+                ban_reason: banReason,
+                detected_ips: detectedIps,
+                banned_at: liveDnsStatus?.banned_at || null,
                 client_id: liveDnsStatus?.username || order?.client_id || pinToCheck,
                 dns_url: liveDnsStatus?.dns_url || order?.dns_url || "",
                 expire_date: liveDnsStatus?.expires_at || order?.expire_date || "Active",

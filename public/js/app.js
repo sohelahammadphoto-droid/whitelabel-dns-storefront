@@ -831,19 +831,27 @@ function renderUserOrderHistory(orders) {
     }
 
     container.innerHTML = orders.map(o => `
-        <div class="order-history-item">
-            <div>
-                <b style="color:#fff; font-size: 13px;">${o.order_id}</b>
-                <div style="font-size: 11px; color: var(--text-muted);">${o.plan_name} • ${o.amount} ${o.currency}</div>
-                <div style="margin-top: 4px;">
-                    <a href="/api/invoice?id=${o.order_id}" target="_blank" style="color: #38bdf8; font-size: 11px; text-decoration: none; font-weight: 700;">
-                        🧾 View Invoice / Receipt ↗
-                    </a>
+        <div class="order-history-item" style="flex-direction: column; align-items: stretch; gap: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <b style="color:#fff; font-size: 13px;">${o.order_id}</b>
+                    <div style="font-size: 11px; color: var(--text-muted);">${o.plan_name} • ${o.amount} ${o.currency}</div>
+                </div>
+                <div style="text-align: right;">
+                    <span class="badge badge-${o.status}">${o.status}</span>
                 </div>
             </div>
-            <div style="text-align: right;">
-                <span class="badge badge-${o.status}">${o.status}</span>
-                ${o.dns_url ? `<div style="font-size: 11px; color: #38bdf8; margin-top: 2px;"><code style="word-break: break-all;">${o.dns_url}</code></div>` : ''}
+            ${o.dns_url && o.status !== 'banned' && o.status !== 'rejected' ? `<div style="font-size: 11px; color: #38bdf8;"><code style="word-break: break-all;">${o.dns_url}</code></div>` : ''}
+            ${o.status === 'banned' || o.status === 'rejected' ? `
+                <div style="margin-top: 4px; padding: 6px 10px; background: rgba(239, 68, 68, 0.12); border-left: 3px solid #ef4444; border-radius: 4px; font-size: 11px; color: #fca5a5;">
+                    <b>${o.ban_reason || '⚠️ Suspended: Anti-Theft / Multi-IP Sharing Policy'}</b>
+                    ${o.detected_ips && o.detected_ips.length ? `<div style="margin-top: 2px; color: #f87171; font-family: monospace;">Detected IPs: ${o.detected_ips.join(', ')}</div>` : ''}
+                </div>
+            ` : ''}
+            <div>
+                <a href="/api/invoice?id=${o.order_id}" target="_blank" style="color: #38bdf8; font-size: 11px; text-decoration: none; font-weight: 700;">
+                    🧾 View Invoice / Receipt ↗
+                </a>
             </div>
         </div>
     `).join('');
@@ -1105,12 +1113,45 @@ async function checkDnsStatus() {
         resultBox.style.display = "block";
         if (json.success && json.data) {
             const d = json.data;
+
+            // ⚠️ If connection is suspended / banned for Anti-Theft / Multi-IP policy
+            if (d.is_banned || d.status === "banned" || d.status === "rejected" || d.status === "disabled") {
+                const ipsHtml = (d.detected_ips && d.detected_ips.length > 0)
+                    ? `<div style="margin-top: 10px; background: rgba(0,0,0,0.35); padding: 10px 14px; border-radius: 6px; border: 1px dashed rgba(239, 68, 68, 0.4);">
+                        <span style="font-size: 11px; color: #fca5a5; font-weight: 700; display: block; margin-bottom: 4px;">🌐 Detected Unauthorized IPs:</span>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            ${d.detected_ips.map(ip => `<code style="background: rgba(239, 68, 68, 0.2); color: #fecaca; padding: 2px 8px; border-radius: 4px; font-size: 11px;">${ip}</code>`).join('')}
+                        </div>
+                       </div>`
+                    : '';
+
+                resultBox.innerHTML = `
+                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 8px; padding: 18px; text-align: left;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                            <div>
+                                <h4 style="color: #f87171; font-size: 15px; font-weight: 800; margin: 0 0 4px;">${d.ban_reason || '⚠️ Payment Due / Anti-Theft Policy Violation'}</h4>
+                                <span style="font-size: 12px; color: var(--text-muted);">PIN: <b style="color:#fff;">${d.client_id}</b></span>
+                            </div>
+                            <span class="badge badge-banned">SUSPENDED</span>
+                        </div>
+                        <p style="color: #fca5a5; font-size: 12px; line-height: 1.5; margin: 0;">
+                            This private DNS pass was suspended due to a security policy violation or concurrent access from multiple network IPs.
+                        </p>
+                        ${ipsHtml}
+                        <div style="margin-top: 12px; font-size: 12px; color: var(--text-muted);">
+                            💬 Please reach out to customer support to resolve your account status.
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
             resultBox.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <b style="color: #38bdf8; font-size: 16px;">${d.client_id || d.order_id}</b>
                     <span class="badge badge-${d.status}">${d.status}</span>
                 </div>
-                <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+                <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; text-align: left;">
                     <div>🌐 <b>Private DNS:</b> <code style="color: #fff; word-break: break-all;">${d.dns_url || 'Pending Activation'}</code></div>
                     <div>⏳ <b>Validity:</b> ${d.duration_days ? `${d.duration_days} Days` : '--'} (Expires: ${d.expire_date || 'N/A'})</div>
                     <div>👤 <b>Customer:</b> ${d.customer_name}</div>
