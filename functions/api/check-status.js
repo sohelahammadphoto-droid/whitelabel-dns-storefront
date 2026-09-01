@@ -1,5 +1,10 @@
 // functions/api/check-status.js — Public DNS & Order Status Checker API
-import { initDb, json, handleOptions } from "./_db.js";
+import { initDb, getMainApiUrl, json, handleOptions } from "./_db.js";
+
+export async function onRequest(context) {
+    if (context.request.method === "OPTIONS") return handleOptions();
+    return onRequestGet(context);
+}
 
 export async function onRequestOptions() {
     return handleOptions();
@@ -29,24 +34,28 @@ export async function onRequestGet(context) {
             `).bind(query, query, query).first();
         }
 
-        // Also query Main Platform API if client_id exists
+        // Also query Main Platform API in real-time
         let liveDnsStatus = null;
-        const mainApiUrl = env.MAIN_API_URL || "https://dnshub.pages.dev";
+        const mainApiUrl = await getMainApiUrl(env);
         const pinToCheck = order?.client_id || query;
 
         try {
-            const res = await fetch(`${mainApiUrl}/api/check-status?client_id=${encodeURIComponent(pinToCheck)}`);
+            const res = await fetch(`${mainApiUrl}/api/check-status?username=${encodeURIComponent(pinToCheck)}`, {
+                headers: { "User-Agent": "StorefrontRealTimeSync/1.0" }
+            });
             if (res.ok) {
                 const data = await res.json();
-                if (data.success && data.data) {
-                    liveDnsStatus = data.data;
+                if (data.success && data.user) {
+                    liveDnsStatus = data.user;
                 }
             }
         } catch (_) {}
 
         if (!order && !liveDnsStatus) {
-            return json({ success: false, error: "No active order or DNS key found with this details. Please check and try again." }, 404);
+            return json({ success: false, error: "No active order or DNS key found with these details. Please check and try again." }, 404);
         }
+
+        const effectiveStatus = liveDnsStatus ? liveDnsStatus.status : (order?.status || "pending");
 
         return json({
             success: true,
@@ -54,12 +63,12 @@ export async function onRequestGet(context) {
                 order_id: order?.order_id || "DIRECT-PIN",
                 customer_name: order?.customer_name || "Valued User",
                 customer_phone: order?.customer_phone || "",
-                plan_name: order?.plan_name || (liveDnsStatus ? "Active Plan" : "Unknown"),
-                status: order?.status || (liveDnsStatus?.status || "active"),
-                client_id: liveDnsStatus?.client_id || order?.client_id || "",
-                dns_url: liveDnsStatus?.dot_domain || order?.dns_url || "",
+                plan_name: order?.plan_name || `${liveDnsStatus?.duration_days || 30} Days Pass`,
+                status: effectiveStatus,
+                client_id: liveDnsStatus?.username || order?.client_id || pinToCheck,
+                dns_url: liveDnsStatus?.dns_url || order?.dns_url || "",
                 expire_date: liveDnsStatus?.expires_at || order?.expire_date || "Active",
-                days_left: liveDnsStatus?.days_left ?? null
+                duration_days: liveDnsStatus?.duration_days || order?.duration_days || 30
             }
         });
     } catch (e) {

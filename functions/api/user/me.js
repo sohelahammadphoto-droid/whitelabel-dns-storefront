@@ -1,8 +1,13 @@
-// functions/api/user/me.js — Logged-in Customer Profile & DNS Services API
-import { initDb, verifyCustomerAuth, json, handleOptions } from "../_db.js";
+// functions/api/user/me.js — Logged-in Customer Profile & Real-Time DNS Status API
+import { initDb, verifyCustomerAuth, getMainApiUrl, json, handleOptions } from "../_db.js";
 
 export async function onRequestOptions() {
     return handleOptions();
+}
+
+export async function onRequest(context) {
+    if (context.request.method === "OPTIONS") return handleOptions();
+    return onRequestGet(context);
 }
 
 export async function onRequestGet(context) {
@@ -26,8 +31,57 @@ export async function onRequestGet(context) {
             orders = res.results || [];
         }
 
-        // Separate active DNS services
-        const activeServices = orders.filter(o => o.status === "approved" && o.dns_url);
+        const mainApiUrl = await getMainApiUrl(env);
+
+        // 🔄 Real-Time Live Sync with Main Platform for each assigned PIN
+        const syncedOrders = await Promise.all(orders.map(async (o) => {
+            const clone = { ...o };
+            if (clone.client_id) {
+                try {
+                    const checkRes = await fetch(`${mainApiUrl}/api/check-status?username=${encodeURIComponent(clone.client_id)}`, {
+                        headers: { "User-Agent": "StorefrontRealTimeSync/1.0" }
+                    });
+                    if (checkRes.ok) {
+                        const checkData = await checkRes.json();
+                        if (checkData.success && checkData.user) {
+                            const liveUser = checkData.user;
+                            const liveStatus = String(liveUser.status || "").toLowerCase(); // 'active', 'rejected', 'banned', 'expired'
+                            
+                            if (liveStatus === "rejected" || liveStatus === "banned" || liveStatus === "disabled" || !liveUser.dns_url) {
+                                clone.status = "banned";
+                                clone.live_banned = true;
+                                // Sync local DB in background
+                                if (env.DB && o.status !== "banned") {
+                                    env.DB.prepare("UPDATE orders SET status = 'banned' WHERE id = ?").bind(o.id).run().catch(() => {});
+                                }
+                            } else if (liveStatus === "expired") {
+                                clone.status = "expired";
+                                if (env.DB && o.status !== "expired") {
+                                    env.DB.prepare("UPDATE orders SET status = 'expired' WHERE id = ?").bind(o.id).run().catch(() => {});
+                                }
+                            } else if (liveStatus === "active" && liveUser.dns_url) {
+                                clone.status = "approved";
+                                clone.dns_url = liveUser.dns_url;
+                                clone.expire_date = liveUser.expires_at || clone.expire_date;
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.warn(`Real-time sync failed for ${clone.client_id}:`, err);
+                }
+            }
+            return clone;
+        }));
+
+        // Filter truly active DNS services (status === 'approved', and NOT banned/rejected/expired)
+        const activeServices = syncedOrders.filter(o => 
+            (o.status === "approved" || o.status === "active") && 
+            o.dns_url && 
+            !o.live_banned && 
+            o.status !== "banned" && 
+            o.status !== "rejected" && 
+            o.status !== "expired"
+        );
 
         return json({
             success: true,
@@ -40,7 +94,7 @@ export async function onRequestGet(context) {
             },
             active_dns: activeServices,
             active_services: activeServices,
-            orders: orders
+            orders: syncedOrders
         });
     } catch (e) {
         console.error("User me error:", e);
