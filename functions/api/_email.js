@@ -1,6 +1,7 @@
-// functions/api/_email.js — Multi-Provider Email & OTP Dispatch Helper
+// functions/api/_email.js — Multi-Provider Email, OTP & Order Approval Notification Dispatcher
 import { getSetting } from "./_db.js";
 
+// Helper to send 6-digit OTP code to Gmail
 export async function sendOtpEmail(env, toEmail, toName, otpCode) {
     const provider = await getSetting(env, "email_provider", "none");
     const siteName = await getSetting(env, "site_name", "UltraDNS");
@@ -53,77 +54,99 @@ export async function sendOtpEmail(env, toEmail, toName, otpCode) {
     </html>
     `;
 
-    // Provider 1: Brevo (Sendinblue) API
-    if (provider === "brevo") {
-        const apiKey = await getSetting(env, "brevo_api_key", "");
-        const senderEmail = await getSetting(env, "brevo_sender_email", "");
-        const senderName = await getSetting(env, "brevo_sender_name", siteName);
+    return sendViaBrevo(env, toEmail, toName, subject, htmlContent, siteName);
+}
 
-        if (!apiKey || !senderEmail) {
-            return { success: false, error: "Brevo API key or sender email not configured in Admin Settings" };
-        }
+// Helper to send instant Order Approval & DNS Credentials Email
+export async function sendOrderApprovedEmail(env, toEmail, toName, orderDetails) {
+    const provider = await getSetting(env, "email_provider", "none");
+    const siteName = await getSetting(env, "site_name", "UltraDNS");
 
-        try {
-            const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-                method: "POST",
-                headers: {
-                    "accept": "application/json",
-                    "api-key": apiKey,
-                    "content-type": "application/json"
-                },
-                body: JSON.stringify({
-                    sender: { name: senderName, email: senderEmail },
-                    to: [{ email: toEmail, name: toName || toEmail }],
-                    subject: subject,
-                    htmlContent: htmlContent
-                })
-            });
-
-            const data = await res.json();
-            if (res.ok) {
-                return { success: true, messageId: data.messageId, provider: "brevo" };
-            } else {
-                return { success: false, error: data.message || "Brevo email failed", details: data };
-            }
-        } catch (e) {
-            return { success: false, error: "Brevo request failed: " + e.message };
-        }
+    if (provider === "none" || !provider) {
+        return { success: false, skipped: true };
     }
 
-    // Provider 2: Gmail SMTP via Direct Cloudflare Socket / HTTP Bridge
-    if (provider === "gmail_smtp") {
-        const gmailEmail = await getSetting(env, "smtp_gmail_email", "");
-        const appPassword = await getSetting(env, "smtp_gmail_app_password", "");
-        const senderName = await getSetting(env, "smtp_sender_name", siteName);
+    const { order_id, plan_name, client_id, dns_url, expire_date } = orderDetails;
+    const subject = `🎉 Order Approved & DNS Active: ${order_id} — ${siteName}`;
 
-        if (!gmailEmail || !appPassword) {
-            return { success: false, error: "Gmail address or App Password not configured in Admin Settings" };
-        }
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #090d16; color: #f8fafc; margin: 0; padding: 20px; }
+            .card { max-width: 520px; margin: 0 auto; background: #121a2b; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 30px; }
+            .logo { font-size: 22px; font-weight: 800; color: #38bdf8; text-align: center; margin-bottom: 20px; }
+            .box { background: rgba(0,0,0,0.35); border: 1px solid rgba(99,102,241,0.3); border-radius: 8px; padding: 18px; margin: 20px 0; }
+            .dns-host { font-family: monospace; font-size: 16px; color: #38bdf8; font-weight: 800; padding: 8px 12px; background: rgba(56,189,248,0.1); border-radius: 6px; }
+            .footer { font-size: 12px; color: #64748b; text-align: center; margin-top: 25px; }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <div class="logo">⚡ ${siteName}</div>
+            <h3 style="color:#fff; margin-bottom:8px;">Hello ${toName || 'Valued Customer'},</h3>
+            <p style="color:#cbd5e1; font-size:14px;">Your order <b>${order_id}</b> for <b>${plan_name}</b> has been verified and approved!</p>
+            
+            <div class="box">
+                <div style="font-size:12px; color:#94a3b8; margin-bottom:4px;">YOUR ASSIGNED PRIVATE DNS HOSTNAME:</div>
+                <div class="dns-host">${dns_url}</div>
+                <div style="margin-top:12px; font-size:13px; color:#cbd5e1;">
+                    <div>👤 <b>PIN / Username:</b> <code>${client_id}</code></div>
+                    <div>⏳ <b>Expires:</b> ${expire_date || 'Active'}</div>
+                </div>
+            </div>
 
-        // Send via Brevo fallback or Google OAuth/Direct relay
-        // If reseller provided Brevo API key as well, it uses Brevo; otherwise uses EmailJS or Google bridge
-        try {
-            const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-                method: "POST",
-                headers: {
-                    "accept": "application/json",
-                    "api-key": appPassword.startsWith("xkeysib-") ? appPassword : await getSetting(env, "brevo_api_key", ""),
-                    "content-type": "application/json"
-                },
-                body: JSON.stringify({
-                    sender: { name: senderName, email: gmailEmail },
-                    to: [{ email: toEmail, name: toName || toEmail }],
-                    subject: subject,
-                    htmlContent: htmlContent
-                })
-            });
-            if (res.ok) {
-                return { success: true, provider: "gmail_smtp" };
-            }
-        } catch {}
-        
-        return { success: true, provider: "gmail_smtp", note: "Simulated or Relay Sent" };
+            <h4 style="color:#38bdf8; font-size:14px; margin-bottom:8px;">📱 Quick Setup:</h4>
+            <ol style="color:#94a3b8; font-size:13px; padding-left:20px; line-height:1.6;">
+                <li>Android: Settings ➔ Connections ➔ Private DNS ➔ Enter <code>${dns_url}</code></li>
+                <li>iOS: Login to your account to download the 1-Click DNS Profile.</li>
+            </ol>
+
+            <div class="footer">
+                &copy; ${new Date().getFullYear()} ${siteName}. Fast & Encrypted Private DNS.
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+
+    return sendViaBrevo(env, toEmail, toName, subject, htmlContent, siteName);
+}
+
+async function sendViaBrevo(env, toEmail, toName, subject, htmlContent, siteName) {
+    const apiKey = await getSetting(env, "brevo_api_key", "");
+    const senderEmail = await getSetting(env, "brevo_sender_email", "");
+    const senderName = await getSetting(env, "brevo_sender_name", siteName);
+
+    if (!apiKey || !senderEmail) {
+        return { success: false, error: "Brevo API credentials not configured in admin" };
     }
 
-    return { success: false, error: "Unknown email provider: " + provider };
+    try {
+        const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: {
+                "accept": "application/json",
+                "api-key": apiKey,
+                "content-type": "application/json"
+            },
+            body: JSON.stringify({
+                sender: { name: senderName, email: senderEmail },
+                to: [{ email: toEmail, name: toName || toEmail }],
+                subject: subject,
+                htmlContent: htmlContent
+            })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            return { success: true, messageId: data.messageId, provider: "brevo" };
+        } else {
+            return { success: false, error: data.message || "Brevo email failed" };
+        }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 }
