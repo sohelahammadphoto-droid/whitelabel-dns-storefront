@@ -44,6 +44,7 @@ export async function onRequestPost(context) {
             }
         }
 
+        const adminEmail = (body.admin_email || "admin@example.com").trim().toLowerCase();
         const adminPassword = (body.admin_password || "").trim();
         const resellerApiKey = (body.reseller_api_key || "").trim();
         const mainApiUrl = (body.main_api_url || "https://dnshub.pages.dev").trim();
@@ -54,6 +55,10 @@ export async function onRequestPost(context) {
         const currency = (body.currency || "SAR").trim();
         const currencySymbol = (body.currency_symbol || "﷼").trim();
         const notice = (body.notice || "⚡ Instant DNS activation after payment verification! 24/7 dedicated support.").trim();
+
+        if (!adminEmail) {
+            return json({ success: false, error: "Admin Email is required." }, 400);
+        }
 
         if (!adminPassword) {
             return json({ success: false, error: "Admin Password is required." }, 400);
@@ -80,6 +85,7 @@ export async function onRequestPost(context) {
         }
 
         // Save settings into D1
+        await setSetting(env, "admin_email", adminEmail);
         await setSetting(env, "admin_password", adminPassword);
         await setSetting(env, "reseller_api_key", resellerApiKey);
         await setSetting(env, "main_api_url", mainApiUrl);

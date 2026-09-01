@@ -1,4 +1,4 @@
-// public/js/admin.js — WordPress-Style Storefront Administration & Studio Controller
+let adminEmail = localStorage.getItem("admin_email") || "";
 let adminPassword = localStorage.getItem("admin_password") || "";
 let cachedSettings = {};
 let currentFaqs = [];
@@ -12,7 +12,7 @@ function getHeaders() {
     return {
         "Content-Type": "application/json",
         "X-Admin-Password": adminPassword,
-        "Authorization": `Bearer ${btoa(adminPassword + ":storeadmin")}`
+        "Authorization": `Bearer ${btoa((adminEmail || "admin") + ":" + adminPassword + ":storeadmin")}`
     };
 }
 
@@ -48,6 +48,7 @@ async function handleInitialSetup(e) {
     btn.textContent = "Initializing Store...";
 
     const payload = {
+        admin_email: document.getElementById("setup-email").value.trim().toLowerCase(),
         admin_password: document.getElementById("setup-password").value.trim(),
         reseller_api_key: document.getElementById("setup-apikey").value.trim(),
         site_name: document.getElementById("setup-sitename").value.trim(),
@@ -64,7 +65,9 @@ async function handleInitialSetup(e) {
         const data = await res.json();
 
         if (data.success) {
+            adminEmail = payload.admin_email;
             adminPassword = payload.admin_password;
+            localStorage.setItem("admin_email", adminEmail);
             localStorage.setItem("admin_password", adminPassword);
             document.getElementById("setup-screen").style.display = "none";
             verifyAndLaunch();
@@ -83,6 +86,7 @@ async function handleInitialSetup(e) {
 async function handleLogin(e) {
     e.preventDefault();
     const btn = document.getElementById("login-btn");
+    const email = (document.getElementById("admin-email")?.value || "").trim().toLowerCase();
     const pass = document.getElementById("admin-pass").value.trim();
 
     btn.disabled = true;
@@ -92,17 +96,23 @@ async function handleLogin(e) {
         const res = await fetch("/api/admin/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ password: pass })
+            body: JSON.stringify({ email: email, password: pass })
         });
         const data = await res.json();
 
         if (data.success) {
+            adminEmail = email;
             adminPassword = pass;
+            localStorage.setItem("admin_email", adminEmail);
             localStorage.setItem("admin_password", adminPassword);
             document.getElementById("login-screen").style.display = "none";
             verifyAndLaunch();
         } else {
-            alert("❌ " + (data.error || "Invalid password"));
+            alert("❌ " + (data.error || "Invalid email or password"));
+            if (data.needs_setup) {
+                document.getElementById("login-screen").style.display = "none";
+                document.getElementById("setup-screen").style.display = "flex";
+            }
         }
     } catch (err) {
         alert("Login failed: " + err.message);
@@ -113,7 +123,9 @@ async function handleLogin(e) {
 }
 
 function handleLogout() {
+    localStorage.removeItem("admin_email");
     localStorage.removeItem("admin_password");
+    adminEmail = "";
     adminPassword = "";
     document.getElementById("admin-app").style.display = "none";
     document.getElementById("login-screen").style.display = "flex";

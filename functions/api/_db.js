@@ -201,6 +201,12 @@ export async function getAllSettings(env) {
     return settings;
 }
 
+export async function getAdminEmail(env) {
+    const dbEmail = await getSetting(env, "admin_email", null);
+    if (dbEmail) return String(dbEmail).trim().toLowerCase();
+    return (env.ADMIN_EMAIL || "").trim().toLowerCase();
+}
+
 export async function getAdminPassword(env) {
     const dbPass = await getSetting(env, "admin_password", null);
     if (dbPass) return String(dbPass).trim();
@@ -228,7 +234,8 @@ export async function verifyAuth(request, env) {
     if (authHeader.startsWith("Bearer ")) {
         try {
             const decoded = atob(authHeader.replace("Bearer ", ""));
-            return decoded.startsWith(expected + ":");
+            // Supports both "password:token" and "email:password:token"
+            return decoded.startsWith(expected + ":") || decoded.includes(":" + expected + ":") || decoded.includes(":" + expected);
         } catch {
             return false;
         }
