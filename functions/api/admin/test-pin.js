@@ -53,7 +53,7 @@ export async function onRequestPost(context) {
 
         const client = apiData.data || {};
         const clientId = client.username || client.client_id || autoUsername;
-        const dnsUrl = client.dns_url || client.dot_host || `${clientId}.dns.sohel.pp.ua`;
+        const dnsUrl = client.dns_url || client.dot_host || client.dot_domain || client.android_dns || `${clientId}.dnsbd.pp.ua`;
         const expireDate = client.expires_at || client.expire_date || "";
 
         // Record in D1 if available
