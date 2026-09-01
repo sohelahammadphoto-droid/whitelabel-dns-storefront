@@ -72,7 +72,7 @@ async function fetchDashboardData(isManualSync = false) {
             dashboardData = json;
             renderCustomerHeader(json.user);
             renderMetrics(json);
-            renderActiveDns(json.active_dns || []);
+            renderDnsPasses(json.active_dns || [], json.suspended_dns || []);
             renderOrderHistory(json.orders || []);
         } else {
             alert("Error loading customer data: " + (json.error || "Unknown error"));
@@ -113,12 +113,15 @@ function renderMetrics(data) {
     if (totalOrdersEl) totalOrdersEl.textContent = ordersList.length;
 }
 
-// Render Active DNS Passes
-function renderActiveDns(activeList) {
+// Render Active and Suspended DNS Passes
+function renderDnsPasses(activeList, suspendedList) {
     const container = document.getElementById("active-dns-container");
     if (!container) return;
 
-    if (!activeList || activeList.length === 0) {
+    const hasActive = activeList && activeList.length > 0;
+    const hasSuspended = suspendedList && suspendedList.length > 0;
+
+    if (!hasActive && !hasSuspended) {
         container.innerHTML = `
             <div class="empty-state" style="grid-column: 1 / -1;">
                 <div style="font-size: 32px; margin-bottom: 8px;">⚡</div>
@@ -132,38 +135,87 @@ function renderActiveDns(activeList) {
         return;
     }
 
-    container.innerHTML = activeList.map(dns => `
-        <div class="dns-pass-card">
-            <div class="dns-pass-header">
-                <div>
-                    <span class="dns-plan-badge">${dns.plan_name || 'Active DNS Plan'}</span>
-                    <h3 style="color: #fff; font-size: 16px; margin: 4px 0 0;">Private DNS Host</h3>
+    let cardsHtml = '';
+
+    // 1. Render Active Passes
+    if (hasActive) {
+        cardsHtml += activeList.map(dns => `
+            <div class="dns-pass-card">
+                <div class="dns-pass-header">
+                    <div>
+                        <span class="dns-plan-badge">${dns.plan_name || 'Active DNS Plan'}</span>
+                        <h3 style="color: #fff; font-size: 16px; margin: 4px 0 0;">Private DNS Host</h3>
+                    </div>
+                    <span class="badge badge-approved">ACTIVE</span>
                 </div>
-                <span class="badge badge-approved">ACTIVE</span>
-            </div>
 
-            <div class="dns-hostname-box">
-                <span class="dns-hostname-code">${dns.dns_url}</span>
-                <button class="btn-copy-mini" onclick="copyToClipboard('${dns.dns_url}', this)">
-                    📋 Copy
-                </button>
-            </div>
+                <div class="dns-hostname-box">
+                    <span class="dns-hostname-code">${dns.dns_url}</span>
+                    <button class="btn-copy-mini" onclick="copyToClipboard('${dns.dns_url}', this)">
+                        📋 Copy
+                    </button>
+                </div>
 
-            <div class="dns-meta-row">
-                <span>PIN: <b style="color: #fff;">${dns.client_id}</b></span>
-                <span>Expires: <b style="color: #38bdf8;">${dns.expire_date || 'Active'}</b></span>
-            </div>
+                <div class="dns-meta-row">
+                    <span>PIN: <b style="color: #fff;">${dns.client_id}</b></span>
+                    <span>Expires: <b style="color: #38bdf8;">${dns.expire_date || 'Active'}</b></span>
+                </div>
 
-            <div class="dns-actions-row">
-                <button class="btn-primary" style="padding: 8px 14px; font-size: 12px; flex: 1;" onclick="copyToClipboard('${dns.dns_url}', this)">
-                    📋 Copy Hostname
-                </button>
-                <button class="btn-secondary" style="padding: 8px 14px; font-size: 12px;" onclick="downloadIosProfile('${dns.client_id}', '${dns.dns_url}')">
-                    🍏 iOS Profile
-                </button>
+                <div class="dns-actions-row">
+                    <button class="btn-primary" style="padding: 8px 14px; font-size: 12px; flex: 1;" onclick="copyToClipboard('${dns.dns_url}', this)">
+                        📋 Copy Hostname
+                    </button>
+                    <button class="btn-secondary" style="padding: 8px 14px; font-size: 12px;" onclick="downloadIosProfile('${dns.client_id}', '${dns.dns_url}')">
+                        🍏 iOS Profile
+                    </button>
+                </div>
             </div>
-        </div>
-    `).join('');
+        `).join('');
+    }
+
+    // 2. Render Suspended / Banned Passes
+    if (hasSuspended) {
+        cardsHtml += suspendedList.map(dns => `
+            <div class="dns-pass-card" style="border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.06);">
+                <div class="dns-pass-header">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 800; color: #f87171; text-transform: uppercase;">${dns.plan_name || 'DNS Pass'}</span>
+                        <h3 style="color: #fca5a5; font-size: 16px; margin: 4px 0 0;">Suspended DNS Host</h3>
+                    </div>
+                    <span class="badge badge-banned">${dns.status ? dns.status.toUpperCase() : 'SUSPENDED'}</span>
+                </div>
+
+                <div class="dns-hostname-box" style="border-color: rgba(239, 68, 68, 0.3); background: rgba(0,0,0,0.5);">
+                    <span class="dns-hostname-code" style="color: #f87171; text-decoration: line-through;">${dns.dns_url || `${dns.client_id}.dnsbd.pp.ua`}</span>
+                    <span style="font-size: 11px; color: #f87171; font-weight: 700;">🚫 Inactive</span>
+                </div>
+
+                <div class="dns-meta-row">
+                    <span>PIN: <b style="color: #fff;">${dns.client_id}</b></span>
+                    <span>Expires: <b>${dns.expire_date || 'Suspended'}</b></span>
+                </div>
+
+                ${dns.ban_reason ? `
+                    <div style="margin-bottom: 14px; padding: 8px 12px; background: rgba(239, 68, 68, 0.15); border-left: 3px solid #ef4444; border-radius: 4px; font-size: 11px; color: #fca5a5;">
+                        <b>${dns.ban_reason}</b>
+                        ${dns.detected_ips && dns.detected_ips.length ? `<div style="margin-top: 4px; color: #fecaca; font-family: monospace;">Detected IPs: ${dns.detected_ips.join(', ')}</div>` : ''}
+                    </div>
+                ` : `
+                    <div style="margin-bottom: 14px; padding: 8px 12px; background: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; border-radius: 4px; font-size: 11px; color: #fca5a5;">
+                        This DNS connection is suspended. Contact store support to restore your pass.
+                    </div>
+                `}
+
+                <div class="dns-actions-row">
+                    <a href="/#plans" class="btn-primary" style="padding: 8px 14px; font-size: 12px; flex: 1; text-decoration: none; text-align: center; justify-content: center;">
+                        ⚡ Renew / Purchase New Pass
+                    </a>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    container.innerHTML = cardsHtml;
 }
 
 // Render Order & Invoice History

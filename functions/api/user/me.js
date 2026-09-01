@@ -77,7 +77,7 @@ export async function onRequestGet(context) {
             return clone;
         }));
 
-        // Filter truly active DNS services (status === 'approved', and NOT banned/rejected/expired)
+        // Filter truly active DNS services
         const activeServices = syncedOrders.filter(o => 
             (o.status === "approved" || o.status === "active") && 
             o.dns_url && 
@@ -85,6 +85,11 @@ export async function onRequestGet(context) {
             o.status !== "banned" && 
             o.status !== "rejected" && 
             o.status !== "expired"
+        );
+
+        // Filter suspended / banned DNS services
+        const suspendedServices = syncedOrders.filter(o => 
+            o.client_id && (o.status === "banned" || o.status === "rejected" || o.live_banned)
         );
 
         return json({
@@ -98,6 +103,7 @@ export async function onRequestGet(context) {
             },
             active_dns: activeServices,
             active_services: activeServices,
+            suspended_dns: suspendedServices,
             orders: syncedOrders
         });
     } catch (e) {
