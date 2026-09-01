@@ -488,9 +488,9 @@ function renderNavbarAuth() {
 
     const content = (customerToken && customerUser) ? `
         <div class="user-btn-wrap">
-            <button class="user-pill" onclick="openUserModal()">
+            <a href="/dashboard.html" class="user-pill" style="text-decoration: none;">
                 <span>👤</span> <span>${customerUser.name.split(' ')[0]}</span>
-            </button>
+            </a>
         </div>
     ` : `
         <button class="nav-btn" onclick="openAuthModal()">🔑 Sign In</button>
@@ -499,9 +499,9 @@ function renderNavbarAuth() {
     if (container) container.innerHTML = content;
     if (mobileContainer) {
         mobileContainer.innerHTML = (customerToken && customerUser) ? `
-            <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="closeMobileMenu(); openUserModal();">
-                👤 My Account (${customerUser.name.split(' ')[0]})
-            </button>
+            <a href="/dashboard.html" class="btn-primary" style="width: 100%; justify-content: center; text-decoration: none;" onclick="closeMobileMenu();">
+                👤 My Dashboard (${customerUser.name.split(' ')[0]})
+            </a>
         ` : `
             <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="closeMobileMenu(); openAuthModal();">
                 🔑 Sign In / Account
@@ -525,22 +525,29 @@ let pendingOtpEmail = "";
 let resendTimer = null;
 
 function switchAuthTab(tab) {
-    const isLogin = tab === 'login' || tab === 'signin';
-    const isRegister = tab === 'register' || tab === 'signup';
-    const isOtp = tab === 'otp';
+    const loginForm = document.getElementById("auth-login-form");
+    const regForm = document.getElementById("auth-reg-form");
+    const otpForm = document.getElementById("auth-otp-form");
+    const tabLogin = document.getElementById("tab-btn-login");
+    const tabReg = document.getElementById("tab-btn-reg");
 
-    const loginTabBtn = document.getElementById("tab-login-btn");
-    const regTabBtn = document.getElementById("tab-register-btn");
-    if (loginTabBtn) loginTabBtn.classList.toggle("active", isLogin);
-    if (regTabBtn) regTabBtn.classList.toggle("active", isRegister);
-    
-    const loginForm = document.getElementById("login-form");
-    const regForm = document.getElementById("register-form");
-    const otpForm = document.getElementById("otp-form");
-
-    if (loginForm) loginForm.style.display = isLogin ? "block" : "none";
-    if (regForm) regForm.style.display = isRegister ? "block" : "none";
-    if (otpForm) otpForm.style.display = isOtp ? "block" : "none";
+    if (tab === 'login') {
+        if (loginForm) loginForm.style.display = "block";
+        if (regForm) regForm.style.display = "none";
+        if (otpForm) otpForm.style.display = "none";
+        if (tabLogin) tabLogin.classList.add("active");
+        if (tabReg) tabReg.classList.remove("active");
+    } else if (tab === 'register') {
+        if (loginForm) loginForm.style.display = "none";
+        if (regForm) regForm.style.display = "block";
+        if (otpForm) otpForm.style.display = "none";
+        if (tabLogin) tabLogin.classList.remove("active");
+        if (tabReg) tabReg.classList.add("active");
+    } else if (tab === 'otp') {
+        if (loginForm) loginForm.style.display = "none";
+        if (regForm) regForm.style.display = "none";
+        if (otpForm) otpForm.style.display = "block";
+    }
 }
 
 async function handleCustomerLogin(e) {
@@ -570,8 +577,7 @@ async function handleCustomerLogin(e) {
             localStorage.setItem("customer_token", customerToken);
             localStorage.setItem("customer_user", JSON.stringify(customerUser));
             closeAuthModal();
-            renderNavbarAuth();
-            openUserModal();
+            window.location.href = "/dashboard.html";
         } else {
             alert("❌ " + (data.error || "Login failed"));
         }
@@ -618,8 +624,7 @@ async function handleCustomerRegister(e) {
                 localStorage.setItem("customer_token", customerToken);
                 localStorage.setItem("customer_user", JSON.stringify(customerUser));
                 closeAuthModal();
-                renderNavbarAuth();
-                openUserModal();
+                window.location.href = "/dashboard.html";
             }
         } else {
             alert("❌ " + (data.error || "Registration failed"));
@@ -654,16 +659,15 @@ async function handleVerifyOtp(e) {
             localStorage.setItem("customer_token", customerToken);
             localStorage.setItem("customer_user", JSON.stringify(customerUser));
             closeAuthModal();
-            renderNavbarAuth();
-            openUserModal();
+            window.location.href = "/dashboard.html";
         } else {
-            alert("❌ " + (data.error || "Invalid OTP code"));
+            alert("❌ " + (data.error || "Verification failed"));
         }
     } catch (err) {
         alert("Error: " + err.message);
     } finally {
         btn.disabled = false;
-        btn.textContent = "✓ Verify & Activate Account";
+        btn.textContent = "Verify & Complete Registration";
     }
 }
 

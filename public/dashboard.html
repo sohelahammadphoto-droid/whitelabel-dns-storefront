@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Customer Dashboard — Private DNS Portal</title>
+    <link rel="icon" id="site-favicon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body data-bg="cyber">
+
+    <!-- Top Notice Bar with Marquee -->
+    <div class="notice-bar" id="notice-bar-wrap">
+        <div class="notice-marquee-track">
+            <div class="notice-marquee-content" id="notice-text">
+                ⚡ Instant Private DNS Activation after payment verification! 24/7 dedicated support.
+            </div>
+            <div class="notice-marquee-content" id="notice-text-clone" aria-hidden="true">
+                ⚡ Instant Private DNS Activation after payment verification! 24/7 dedicated support.
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Navigation Header -->
+    <header class="dashboard-header">
+        <div class="container dashboard-nav-wrap">
+            <a href="/" class="brand-logo">
+                <img id="site-logo-img" class="site-custom-logo" style="display: none;" alt="Store Logo">
+                <span id="site-logo-icon" class="brand-default-icon">⚡</span>
+                <span id="site-name">UltraDNS</span>
+                <span class="portal-tag">PORTAL</span>
+            </a>
+
+            <div class="dashboard-user-actions">
+                <a href="/" class="btn-dashboard-home">
+                    <span>🏪</span> <span class="action-text">Storefront</span>
+                </a>
+                <div class="user-greeting-pill">
+                    <span class="user-avatar-icon">👤</span>
+                    <span id="nav-user-name" class="user-greeting-name">Loading...</span>
+                </div>
+                <button class="btn-dashboard-logout" onclick="handleDashboardLogout()" title="Logout">
+                    <span>🚪</span> <span class="action-text">Logout</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Body -->
+    <main class="dashboard-main container">
+
+        <!-- Welcome Banner & Quick Metrics -->
+        <section class="welcome-section">
+            <div class="welcome-card">
+                <div class="welcome-content">
+                    <div class="welcome-tag">CUSTOMER SELF-SERVICE PORTAL</div>
+                    <h1 class="welcome-title">Welcome back, <span id="welcome-name" class="highlight-name">Customer</span> 👋</h1>
+                    <p class="welcome-sub" id="welcome-email">Managing your encrypted zero-lag Private DNS subscriptions & security passes.</p>
+                </div>
+                <div class="welcome-action">
+                    <a href="/#plans" class="btn-primary" style="padding: 10px 20px; font-size: 13px;">
+                        ⚡ Purchase New Pass
+                    </a>
+                </div>
+            </div>
+
+            <!-- Quick Metrics Grid -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-icon metric-icon-active">⚡</div>
+                    <div>
+                        <div class="metric-value" id="metric-active-count">0</div>
+                        <div class="metric-label">Active DNS Passes</div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon metric-icon-orders">📦</div>
+                    <div>
+                        <div class="metric-value" id="metric-total-orders">0</div>
+                        <div class="metric-label">Total Orders</div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon metric-icon-security">🛡️</div>
+                    <div>
+                        <div class="metric-value" id="metric-security-status" style="color: #34d399;">PROTECTED</div>
+                        <div class="metric-label">Encrypted DNS-over-TLS</div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon metric-icon-server">🌐</div>
+                    <div>
+                        <div class="metric-value" style="color: #38bdf8;">0.01ms</div>
+                        <div class="metric-label">Global Anycast Latency</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 1: Active DNS Connections -->
+        <section class="dashboard-section" id="section-active-dns">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">⚡ My Active DNS Connections</h2>
+                    <p class="section-subtitle">Real-time status, hostnames, and 1-click device configuration profiles.</p>
+                </div>
+                <button class="btn-refresh" onclick="fetchDashboardData(true)" id="btn-refresh-dns">
+                    <span class="refresh-icon">🔄</span> Sync Live Status
+                </button>
+            </div>
+
+            <div id="active-dns-container" class="active-dns-grid">
+                <!-- Dynamically rendered via JS -->
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <span>Checking real-time DNS connection status...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Order & Invoice History -->
+        <section class="dashboard-section" id="section-order-history">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">📦 Order & Invoice History</h2>
+                    <p class="section-subtitle">Complete log of your subscriptions, transaction receipts, and payment verification.</p>
+                </div>
+            </div>
+
+            <div class="order-table-card">
+                <div id="order-history-container" class="order-list-wrap">
+                    <!-- Dynamically rendered via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Device Quick Setup Help & Guides -->
+        <section class="dashboard-section setup-guide-section">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">📖 Instant Setup Guide</h2>
+                    <p class="section-subtitle">How to configure your assigned DNS hostname on your devices.</p>
+                </div>
+            </div>
+
+            <div class="guide-cards-grid">
+                <div class="guide-card-item">
+                    <div class="guide-card-icon">🤖</div>
+                    <h3 class="guide-card-title">Android (Private DNS)</h3>
+                    <ol class="guide-card-steps">
+                        <li>Open <b>Settings</b> ➔ <b>Connections / Network</b>.</li>
+                        <li>Tap <b>Private DNS</b> ➔ Select <b>Private DNS provider hostname</b>.</li>
+                        <li>Paste your assigned hostname and tap <b>Save</b>.</li>
+                    </ol>
+                </div>
+
+                <div class="guide-card-item">
+                    <div class="guide-card-icon">🍏</div>
+                    <h3 class="guide-card-title">iPhone / iPad (iOS Profile)</h3>
+                    <ol class="guide-card-steps">
+                        <li>Tap the <b>🍏 iOS Profile</b> button on your active pass above.</li>
+                        <li>Open <b>Settings</b> ➔ <b>Profile Downloaded</b> ➔ Tap <b>Install</b>.</li>
+                        <li>Enjoy system-wide encrypted TLS acceleration!</li>
+                    </ol>
+                </div>
+
+                <div class="guide-card-item">
+                    <div class="guide-card-icon">🪟</div>
+                    <h3 class="guide-card-title">Windows / Mac (DoH)</h3>
+                    <ol class="guide-card-steps">
+                        <li>Open Chrome, Brave, or Edge ➔ <b>Settings</b>.</li>
+                        <li>Search <b>Security / Use Secure DNS</b>.</li>
+                        <li>Choose <b>Custom</b> and paste: <code>https://&lt;your-hostname&gt;/dns-query</code>.</li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="container footer-content">
+            <p>© <span id="footer-year">2026</span> <span id="footer-site-name">UltraDNS</span>. All rights reserved.</p>
+            <p style="color: var(--text-muted); font-size: 12px;">Powered by Military-Grade Encrypted DNS Infrastructure</p>
+        </div>
+    </footer>
+
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>
