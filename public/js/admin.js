@@ -1,43 +1,55 @@
-// public/js/admin.js — Reseller Admin Dashboard & Setup Wizard Logic
+// public/js/admin.js — Reseller Storefront Admin Dashboard & Customizer Logic
 let authToken = localStorage.getItem("store_admin_token") || "";
 
 document.addEventListener("DOMContentLoaded", () => {
-    checkSetupStatus();
+    checkFirstTimeSetup();
 });
 
-async function checkSetupStatus() {
+async function checkFirstTimeSetup() {
     try {
-        const res = await fetch("/api/admin/setup");
-        const data = await res.json();
-
-        if (data.success && data.needs_setup) {
+        const res = await fetch("/api/admin/check-setup");
+        const json = await res.json();
+        if (json.isFirstTime) {
+            document.getElementById("setup-screen").style.display = "flex";
             document.getElementById("login-screen").style.display = "none";
             document.getElementById("admin-app").style.display = "none";
-            document.getElementById("setup-screen").style.display = "flex";
             return;
         }
+    } catch (_) {}
 
-        // Setup already completed
-        document.getElementById("setup-screen").style.display = "none";
-        if (authToken) {
-            showDashboard();
-        } else {
-            document.getElementById("login-screen").style.display = "flex";
-            document.getElementById("admin-app").style.display = "none";
+    if (authToken) {
+        verifySession();
+    } else {
+        showLoginScreen();
+    }
+}
+
+function showLoginScreen() {
+    document.getElementById("setup-screen").style.display = "none";
+    document.getElementById("login-screen").style.display = "flex";
+    document.getElementById("admin-app").style.display = "none";
+}
+
+async function verifySession() {
+    try {
+        const res = await fetch("/api/admin/orders", {
+            headers: { "Authorization": `Bearer ${authToken}` }
+        });
+        if (res.status === 401) {
+            handleLogout();
+            return;
         }
+        initDashboard();
     } catch (e) {
-        console.error("Check setup status error:", e);
-        if (authToken) {
-            showDashboard();
-        }
+        handleLogout();
     }
 }
 
 async function handleInitialSetup(e) {
     e.preventDefault();
-    const btn = document.getElementById("setup-submit-btn");
-    btn.disabled = true;
-    btn.textContent = "Configuring Store & Testing API...";
+    const submitBtn = document.getElementById("setup-submit-btn");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Setting up store...";
 
     const payload = {
         admin_password: document.getElementById("setup-password").value.trim(),
@@ -48,57 +60,54 @@ async function handleInitialSetup(e) {
     };
 
     try {
-        const res = await fetch("/api/admin/setup", {
+        const res = await fetch("/api/admin/initial-setup", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
         const data = await res.json();
-
-        if (data.success) {
+        if (data.success && data.token) {
             authToken = data.token;
             localStorage.setItem("store_admin_token", authToken);
-            alert("🎉 Setup Complete! Your store has been configured in your D1 Database.");
-            document.getElementById("setup-screen").style.display = "none";
-            showDashboard();
+            alert("🎉 Store initialized successfully! Welcome to your Admin Dashboard.");
+            initDashboard();
         } else {
-            alert("❌ Setup Error: " + (data.error || "Failed to initialize store."));
+            alert("❌ Setup failed: " + (data.error || "Unknown error"));
+            submitBtn.disabled = false;
+            submitBtn.textContent = "✨ Save & Launch Admin Dashboard";
         }
     } catch (err) {
-        alert("❌ Connection error: " + err.message);
-    } finally {
-        btn.disabled = false;
-        btn.textContent = "✨ Save & Launch Admin Dashboard";
+        alert("Error: " + err.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "✨ Save & Launch Admin Dashboard";
     }
 }
 
 async function handleLogin(e) {
     e.preventDefault();
-    const pass = document.getElementById("admin-pass").value.trim();
+    const pass = document.getElementById("admin-pass").value;
     const btn = document.getElementById("login-btn");
     btn.disabled = true;
     btn.textContent = "Verifying...";
 
+    authToken = btoa(pass + ":" + Date.now());
+
     try {
-        const res = await fetch("/api/admin/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ password: pass })
+        const res = await fetch("/api/admin/orders", {
+            headers: { "Authorization": `Bearer ${authToken}` }
         });
         const data = await res.json();
 
-        if (data.success) {
-            authToken = data.token;
+        if (res.ok && data.success) {
             localStorage.setItem("store_admin_token", authToken);
-            showDashboard();
+            initDashboard();
         } else {
-            if (data.needs_setup) {
-                return checkSetupStatus();
-            }
-            alert("❌ " + (data.error || "Invalid password"));
+            alert("❌ Invalid Admin Password");
+            authToken = "";
+            localStorage.removeItem("store_admin_token");
         }
     } catch (err) {
-        alert("❌ Network error: " + err.message);
+        alert("Login error: " + err.message);
     } finally {
         btn.disabled = false;
         btn.textContent = "Login to Dashboard";
@@ -106,13 +115,12 @@ async function handleLogin(e) {
 }
 
 function handleLogout() {
-    localStorage.removeItem("store_admin_token");
     authToken = "";
-    document.getElementById("admin-app").style.display = "none";
-    document.getElementById("login-screen").style.display = "flex";
+    localStorage.removeItem("store_admin_token");
+    showLoginScreen();
 }
 
-function showDashboard() {
+function initDashboard() {
     document.getElementById("setup-screen").style.display = "none";
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("admin-app").style.display = "flex";
@@ -146,120 +154,156 @@ function showTab(tabName) {
     const targetTab = document.getElementById(`tab-${tabName}`);
     if (targetTab) targetTab.style.display = "block";
 
-    const titles = { 
-        orders: "Orders & Sales", 
-        testpin: "🧪 30-Minute Free Test PIN",
-        generate: "⚡ Full Pass PIN Gen", 
-        email: "📧 Gmail OTP & Verification Settings",
-        settings: "⚙️ Store Settings" 
+    // Set active tab in sidebar
+    const tabsMap = {
+        orders: 0,
+        customizer: 1,
+        testpin: 2,
+        generate: 3,
+        email: 4,
+        settings: 5
     };
-    document.getElementById("page-title").textContent = titles[tabName] || "Dashboard";
+    const navItems = document.querySelectorAll(".admin-nav-item");
+    if (navItems[tabsMap[tabName]]) {
+        navItems[tabsMap[tabName]].classList.add("active");
+    }
+
+    const titles = { 
+        orders: { title: "Orders & Sales", subtitle: "Manage customer payments and DNS activations" },
+        customizer: { title: "🎨 Theme & Content Customizer", subtitle: "Customize colors, headings, button names, and announcements" },
+        testpin: { title: "🧪 30-Minute Free Test PIN", subtitle: "Generate instant 30-min trial PINs for prospective customers" },
+        generate: { title: "⚡ Full Pass PIN Gen", subtitle: "Create long-term DNS PINs directly from API balance" },
+        email: { title: "📧 Gmail OTP & Verification", subtitle: "Configure Brevo or Gmail SMTP verification for signups" },
+        settings: { title: "⚙️ Store & API Settings", subtitle: "Manage API keys, admin password, and anti-bot security" }
+    };
+
+    const t = titles[tabName] || { title: "Dashboard", subtitle: "" };
+    document.getElementById("page-title").textContent = t.title;
+    document.getElementById("page-subtitle").textContent = t.subtitle;
 }
 
 // Global copy helper with instant visual feedback
 window.copyToClipboard = function(text, btn, feedbackText = "✓ Copied!") {
-    if (!text) return;
-    navigator.clipboard.writeText(text).then(() => {
-        if (btn) {
-            const origHtml = btn.innerHTML;
-            btn.innerHTML = feedbackText;
-            btn.style.background = "#059669";
-            btn.style.color = "#ffffff";
-            setTimeout(() => {
-                btn.innerHTML = origHtml;
-                btn.style.background = "";
-                btn.style.color = "";
-            }, 2000);
-        }
-    }).catch(() => {
-        prompt("Copy text manually:", text);
-    });
+    if (!navigator.clipboard) {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+    } else {
+        navigator.clipboard.writeText(text);
+    }
+    
+    if (btn) {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = feedbackText;
+        btn.style.borderColor = "#10b981";
+        btn.style.color = "#34d399";
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.style.borderColor = "";
+            btn.style.color = "";
+        }, 2200);
+    }
 };
 
-function formatOrderWaMessage(o) {
-    const clientId = o.client_id || o.username || "";
-    const dnsUrl = o.dns_url || `${clientId}.dns.sohel.pp.ua`;
-    const exp = o.expire_date || "30 Days";
-    const iosUrl = `https://dnshub.pages.dev/api/public/ios-profile?username=${clientId}`;
-
-    return `🎉 *DNS ACTIVATION COMPLETED* 🎉\n\n` +
-        `👤 *Username / PIN:* \`${clientId}\`\n` +
-        `🌐 *Private DNS Address:* \`${dnsUrl}\`\n` +
-        `⏳ *Validity:* *${o.plan_name || 'Paid Plan'}* (Expires: ${exp})\n\n` +
-        `📲 *Android Setup:* Settings ➔ Connections ➔ Private DNS ➔ Specified DNS ➔ Enter: \`${dnsUrl}\`\n` +
-        `🍏 *iOS 1-Click Profile:* ${iosUrl}\n\n` +
-        `🔥 Ultra-Fast Ad-Free Private DNS is now active for your device!`;
-}
-
+// -------------------------------------------------------------
+// Orders Management
+// -------------------------------------------------------------
 async function loadOrders() {
     const tbody = document.getElementById("orders-tbody");
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading orders...</td></tr>`;
-
     try {
         const res = await fetch("/api/admin/orders", {
             headers: { "Authorization": `Bearer ${authToken}` }
         });
         const json = await res.json();
 
-        if (!json.success) {
-            if (res.status === 401) return handleLogout();
-            tbody.innerHTML = `<tr><td colspan="7" style="color: #f87171;">Error: ${json.error}</td></tr>`;
-            return;
-        }
+        if (json.success) {
+            const orders = json.data || [];
+            
+            // Update Stats
+            document.getElementById("stat-total").textContent = orders.length;
+            document.getElementById("stat-pending").textContent = orders.filter(o => o.status === "pending").length;
+            document.getElementById("stat-approved").textContent = orders.filter(o => o.status === "approved").length;
 
-        const orders = json.data || [];
-        updateStats(orders);
+            if (orders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No customer orders yet.</td></tr>`;
+                return;
+            }
 
-        if (orders.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No customer orders placed yet.</td></tr>`;
-            return;
-        }
+            tbody.innerHTML = orders.map(o => {
+                const statusBadge = {
+                    pending: `<span class="badge badge-pending">⏳ Pending</span>`,
+                    approved: `<span class="badge badge-approved">✓ Approved</span>`,
+                    rejected: `<span class="badge badge-rejected">✕ Rejected</span>`
+                }[o.status] || o.status;
 
-        tbody.innerHTML = orders.map(o => {
-            const cleanPhone = (o.customer_phone || "").replace(/[^0-9]/g, "");
-            const waMsg = formatOrderWaMessage(o);
-            const waLink = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMsg)}` : `https://api.whatsapp.com/send?text=${encodeURIComponent(waMsg)}`;
-
-            return `
-            <tr>
-                <td><b style="color:#fff;">${o.order_id}</b><br><span style="font-size:11px; color:var(--text-muted);">${o.created_at || ''}</span></td>
-                <td><b>${o.customer_name}</b><br><span style="color:#38bdf8; font-size:12px;">${o.customer_phone}</span>${o.customer_email ? `<br><span style="color:#94a3b8; font-size:11px;">${o.customer_email}</span>` : ''}</td>
-                <td>${o.plan_name}<br><b style="color:#fff;">${o.amount} ${o.currency}</b></td>
-                <td><b>${o.payment_method}</b><br><code style="color:#a78bfa; font-size:11px;">${o.trx_id}</code></td>
-                <td><span class="badge badge-${o.status}">${o.status}</span></td>
-                <td>${o.client_id ? `<code style="color:#34d399; font-weight:800;">${o.client_id}</code>` : '<span style="color:var(--text-muted);">--</span>'}</td>
-                <td>
-                    ${o.status === 'pending' ? `
-                        <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                            <button class="btn btn-success btn-sm" onclick="approveOrder('${o.order_id}')">✓ Approve</button>
-                            <button class="btn btn-danger btn-sm" onclick="rejectOrder('${o.order_id}')">✕</button>
+                let actionBtn = "";
+                if (o.status === "pending") {
+                    actionBtn = `
+                        <div style="display: flex; gap: 6px;">
+                            <button class="btn btn-success btn-sm" onclick="handleOrderAction('${o.order_id}', 'approve')">Approve</button>
+                            <button class="btn btn-danger btn-sm" onclick="handleOrderAction('${o.order_id}', 'reject')">Reject</button>
                         </div>
-                    ` : o.dns_url ? `
-                        <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                            <button class="btn btn-primary btn-sm" onclick="copyToClipboard('${o.dns_url}', this, '✓ Host Copied')">📋 Copy DNS</button>
-                            <button class="btn btn-success btn-sm" onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(waMsg)}'), this, '✓ Msg Copied')">💬 Copy Msg</button>
-                            <a href="${waLink}" target="_blank" class="btn btn-sm" style="background:#22c55e; color:#fff; text-decoration:none; display:inline-flex; align-items:center; padding:4px 8px; border-radius:6px;" title="Send WhatsApp">🚀</a>
+                    `;
+                } else if (o.status === "approved") {
+                    const cleanPhone = (o.customer_phone || "").replace(/[^0-9]/g, "");
+                    const waShareMsg = `🎉 *DNS ACTIVATION COMPLETED* 🎉\n\n👤 *Username / PIN:* \`${o.client_id || 'N/A'}\`\n🌐 *Private DNS Address:* \`${o.dns_url || `${o.client_id}.dnsbd.pp.ua`}\`\n⏳ *Validity:* *${o.duration_days || 30} Days* (Expires: ${o.expire_date || 'N/A'})\n\n📲 *Android Setup:* Settings ➔ Connections ➔ Private DNS ➔ Specified DNS ➔ Enter: \`${o.dns_url || `${o.client_id}.dnsbd.pp.ua`}\`\n🍏 *iOS Profile:* https://dnshub.pages.dev/api/public/ios-profile?username=${o.client_id}\n\n🔥 Ultra-Fast Ad-Free Private DNS is active for your device!`;
+                    const waLink = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(waShareMsg)}`;
+                    const safeDns = (o.dns_url || `${o.client_id}.dnsbd.pp.ua`).replace(/'/g, "\\'");
+                    const safeWa = waShareMsg.replace(/'/g, "\\'").replace(/\n/g, "\\n");
+
+                    actionBtn = `
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <div style="display: flex; gap: 4px;">
+                                <button class="btn btn-secondary btn-sm" onclick="copyToClipboard('${safeDns}', this, '✓ Copied!')" title="Copy DNS Hostname">📋 DNS</button>
+                                <button class="btn btn-secondary btn-sm" onclick="copyToClipboard('${safeWa}', this, '✓ Copied!')" title="Copy Formatted WhatsApp Message">💬 Msg</button>
+                                ${cleanPhone ? `<a href="${waLink}" target="_blank" class="btn btn-success btn-sm" title="Send directly to WhatsApp">🚀 Send</a>` : ''}
+                            </div>
                         </div>
-                    ` : '<span style="color:var(--text-muted);">Done</span>'}
-                </td>
-            </tr>
-            `;
-        }).join('');
+                    `;
+                } else {
+                    actionBtn = `<span style="color: var(--text-muted); font-size: 12px;">Closed</span>`;
+                }
+
+                return `
+                    <tr>
+                        <td>
+                            <b>${o.order_id}</b>
+                            <div style="font-size: 11px; color: var(--text-muted);">${new Date(o.created_at || Date.now()).toLocaleDateString()}</div>
+                        </td>
+                        <td>
+                            <div><b>${o.customer_name}</b></div>
+                            <div style="font-size: 12px; color: var(--text-muted);">${o.customer_phone}</div>
+                        </td>
+                        <td>
+                            <div>${o.plan_name}</div>
+                            <div style="font-size: 12px; color: #38bdf8; font-weight: 700;">${o.amount} ${o.currency}</div>
+                        </td>
+                        <td>
+                            <div><b>${o.payment_method}</b></div>
+                            <div style="font-size: 11px; color: #a5b4fc;"><code>${o.trx_id}</code></div>
+                        </td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            ${o.client_id ? `
+                                <div><b style="color: #38bdf8;">${o.client_id}</b></div>
+                                <div style="font-size: 11px; color: var(--text-muted);">${o.dns_url || ''}</div>
+                            ` : '<span style="color: var(--text-muted);">-</span>'}
+                        </td>
+                        <td>${actionBtn}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="7" style="color: #f87171;">Failed to load orders: ${e.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="color: #f87171; text-align: center;">Error loading orders: ${e.message}</td></tr>`;
     }
 }
 
-function updateStats(orders) {
-    document.getElementById("stat-total").textContent = orders.length;
-    document.getElementById("stat-pending").textContent = orders.filter(o => o.status === 'pending').length;
-    document.getElementById("stat-approved").textContent = orders.filter(o => o.status === 'approved').length;
-}
-
-async function approveOrder(orderId) {
-    if (!confirm(`Are you sure you want to approve Order ${orderId}? This will automatically deduct 1 credit from your Main API balance and generate the DNS PIN.`)) {
-        return;
-    }
+async function handleOrderAction(orderId, action) {
+    if (!confirm(`Are you sure you want to ${action.toUpperCase()} order ${orderId}?`)) return;
 
     try {
         const res = await fetch("/api/admin/orders", {
@@ -268,56 +312,34 @@ async function approveOrder(orderId) {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${authToken}`
             },
-            body: JSON.stringify({ order_id: orderId, action: "approve" })
+            body: JSON.stringify({ order_id: orderId, action })
         });
         const data = await res.json();
-
         if (data.success) {
-            alert(`🎉 ${data.message}\n\nGenerated PIN: ${data.data.client_id}\nDNS Hostname: ${data.data.dns_url}`);
+            alert(`✅ Order ${orderId} has been ${action}ed!`);
             loadOrders();
             loadBalance();
         } else {
-            alert("❌ Approval failed: " + (data.error || "Unknown error"));
+            alert("❌ Failed: " + (data.error || "Unknown error"));
         }
-    } catch (e) {
-        alert("❌ Error: " + e.message);
+    } catch (err) {
+        alert("Action Error: " + err.message);
     }
 }
 
-async function rejectOrder(orderId) {
-    if (!confirm(`Reject order ${orderId}?`)) return;
-    try {
-        const res = await fetch("/api/admin/orders", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${authToken}`
-            },
-            body: JSON.stringify({ order_id: orderId, action: "reject" })
-        });
-        const data = await res.json();
-        if (data.success) {
-            alert("Order rejected.");
-            loadOrders();
-        }
-    } catch (e) {
-        alert("Error: " + e.message);
-    }
-}
-
-// ----------------------------------------------------
-// 30-Minute Test PIN Handler
-// ----------------------------------------------------
+// -------------------------------------------------------------
+// 30-Minute Test PIN Generator
+// -------------------------------------------------------------
 async function handleGenerateTestPin(e) {
     e.preventDefault();
     const btn = document.getElementById("test-pin-submit-btn");
-    btn.disabled = true;
-    btn.textContent = "⚡ Generating 30-Min Trial...";
+    const resultBox = document.getElementById("test-pin-result");
+    const phone = document.getElementById("test-pin-phone").value.trim();
+    const note = document.getElementById("test-pin-note").value.trim();
 
-    const payload = {
-        phone: document.getElementById("test-pin-phone").value.trim(),
-        note: document.getElementById("test-pin-note").value.trim()
-    };
+    btn.disabled = true;
+    btn.textContent = "Generating Trial PIN...";
+    resultBox.style.display = "none";
 
     try {
         const res = await fetch("/api/admin/test-pin", {
@@ -326,45 +348,38 @@ async function handleGenerateTestPin(e) {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${authToken}`
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({ phone, note })
         });
         const data = await res.json();
 
-        const resBox = document.getElementById("test-pin-result");
-        resBox.style.display = "block";
+        if (data.success && data.data) {
+            const pin = data.data;
+            const cleanPhone = (phone || "").replace(/[^0-9]/g, "");
+            const waShareMsg = pin.whatsapp_share_text || `⚡ *30-MIN PRIVATE DNS TEST PIN*\n\n👤 *Username:* \`${pin.username}\`\n⏱️ *Duration:* 30 Minutes\n🌐 *DNS Hostname:* \`${pin.dns_url}\`\n\n📲 *Android:* Settings ➔ Connections ➔ Private DNS ➔ \`${pin.dns_url}\``;
+            const waLink = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(waShareMsg)}`;
+            const safeDns = (pin.dns_url || '').replace(/'/g, "\\'");
+            const safeWa = waShareMsg.replace(/'/g, "\\'").replace(/\n/g, "\\n");
 
-        if (data.success) {
-            const d = data.data;
-            const cleanPhone = payload.phone.replace(/[^0-9]/g, "");
-            const waMsg = d.whatsapp_share_text;
-            const waLink = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMsg)}` : `https://api.whatsapp.com/send?text=${encodeURIComponent(waMsg)}`;
-
-            resBox.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-                    <div style="color: #34d399; font-weight: 800; font-size: 16px;">🎉 30-Minute Test PIN Created!</div>
-                    <span class="badge badge-approved">⚡ 30 MIN TRIAL</span>
+            resultBox.style.display = "block";
+            resultBox.innerHTML = `
+                <div style="color: #34d399; font-weight: 800; font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <span>✓</span> 30-Minute Test PIN Generated!
                 </div>
-                <div style="font-size: 13px; color: #cbd5e1; line-height: 1.8; margin-bottom: 16px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
-                    <div>👤 Random Test PIN: <b style="color:#fff; font-size:15px; font-family:monospace;">${d.username}</b></div>
-                    <div>🌐 DNS Hostname: <code style="color:#38bdf8; font-weight:bold; font-size:14px;">${d.dns_url}</code></div>
-                    <div>⏱️ Validity: <b style="color:#fbbf24;">30 Minutes (${d.expires_at || 'Just Now'})</b></div>
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+                    <div style="margin-bottom: 8px;"><span style="color: var(--text-muted); font-size: 12px;">Assigned PIN:</span> <b style="color: #38bdf8; font-size: 16px; font-family: monospace;">${pin.username}</b></div>
+                    <div style="margin-bottom: 8px;"><span style="color: var(--text-muted); font-size: 12px;">DNS Hostname:</span> <b style="color: #fff; font-size: 14px; font-family: monospace;">${pin.dns_url}</b></div>
+                    <div><span style="color: var(--text-muted); font-size: 12px;">Valid For:</span> <span style="color: #fbbf24; font-weight: 700;">30 Minutes</span></div>
                 </div>
-                <div style="display:flex; gap: 8px; flex-wrap: wrap;">
-                    <button type="button" class="btn btn-primary" onclick="copyToClipboard('${d.dns_url}', this, '✓ Hostname Copied!')" style="flex:1;">
-                        📋 1. Copy Hostname
-                    </button>
-                    <button type="button" class="btn btn-success" onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(waMsg)}'), this, '✓ Message Copied!')" style="flex:1;">
-                        💬 2. Copy WhatsApp Msg
-                    </button>
-                    <a href="${waLink}" target="_blank" class="btn btn-sm" style="background:#22c55e; color:#fff; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border-radius:6px; font-weight:bold;">
-                        🚀 Send
-                    </a>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="copyToClipboard('${safeDns}', this, '✓ Copied Hostname!')">📋 1. Copy Hostname</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="copyToClipboard('${safeWa}', this, '✓ Copied WhatsApp Msg!')">💬 2. Copy WhatsApp Msg</button>
+                    ${cleanPhone ? `<a href="${waLink}" target="_blank" class="btn btn-success btn-sm">🚀 Send to WhatsApp</a>` : ''}
                 </div>
             `;
             loadBalance();
             loadOrders();
         } else {
-            resBox.innerHTML = `<div style="color: #f87171; font-weight:700;">❌ ${data.error || "Generation failed"}</div>`;
+            alert("❌ Generation failed: " + (data.error || "Unknown error"));
         }
     } catch (err) {
         alert("Error: " + err.message);
@@ -374,20 +389,20 @@ async function handleGenerateTestPin(e) {
     }
 }
 
-// ----------------------------------------------------
-// Full Pass Manual PIN Handler
-// ----------------------------------------------------
+// -------------------------------------------------------------
+// Full Pass PIN Generation
+// -------------------------------------------------------------
 async function handleManualGenerate(e) {
     e.preventDefault();
     const btn = document.getElementById("gen-submit-btn");
-    btn.disabled = true;
-    btn.textContent = "Generating...";
+    const resultBox = document.getElementById("gen-result");
+    const phone = document.getElementById("gen-phone").value.trim();
+    const duration = document.getElementById("gen-duration").value;
+    const note = document.getElementById("gen-note").value.trim();
 
-    const payload = {
-        phone: document.getElementById("gen-phone").value.trim(),
-        duration_days: parseInt(document.getElementById("gen-duration").value, 10),
-        note: (document.getElementById("gen-note") ? document.getElementById("gen-note").value.trim() : "")
-    };
+    btn.disabled = true;
+    btn.textContent = "Generating Paid PIN...";
+    resultBox.style.display = "none";
 
     try {
         const res = await fetch("/api/admin/generate", {
@@ -396,45 +411,38 @@ async function handleManualGenerate(e) {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${authToken}`
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({ phone, duration_days: duration, note })
         });
         const data = await res.json();
 
-        const resBox = document.getElementById("gen-result");
-        resBox.style.display = "block";
+        if (data.success && data.data) {
+            const client = data.data;
+            const cleanPhone = (phone || "").replace(/[^0-9]/g, "");
+            const waShareMsg = client.whatsapp_share_text || `🎉 *DNS ACTIVATION COMPLETED* 🎉\n\n👤 *Username / PIN:* \`${client.username}\`\n🌐 *Private DNS Address:* \`${client.dns_url}\`\n⏳ *Validity:* *${client.duration_days} Days* (Expires: ${client.expire_date || 'N/A'})\n\n📲 *Android Setup:* Settings ➔ Connections ➔ Private DNS ➔ Specified DNS ➔ Enter: \`${client.dns_url}\`\n🍏 *iOS Profile:* https://dnshub.pages.dev/api/public/ios-profile?username=${client.username}\n\n🔥 Ultra-Fast Ad-Free Private DNS is active for your device!`;
+            const waLink = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(waShareMsg)}`;
+            const safeDns = (client.dns_url || '').replace(/'/g, "\\'");
+            const safeWa = waShareMsg.replace(/'/g, "\\'").replace(/\n/g, "\\n");
 
-        if (data.success) {
-            const d = data.data;
-            const cleanPhone = payload.phone.replace(/[^0-9]/g, "");
-            const waMsg = d.whatsapp_share_text;
-            const waLink = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMsg)}` : `https://api.whatsapp.com/send?text=${encodeURIComponent(waMsg)}`;
-
-            resBox.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-                    <div style="color: #34d399; font-weight: 800; font-size: 16px;">🎉 DNS PIN Created Successfully!</div>
-                    <span class="badge badge-approved">⚡ ${d.duration_days} DAYS</span>
+            resultBox.style.display = "block";
+            resultBox.innerHTML = `
+                <div style="color: #34d399; font-weight: 800; font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <span>✓</span> Paid DNS PIN Created Successfully!
                 </div>
-                <div style="font-size: 13px; color: #cbd5e1; line-height: 1.8; margin-bottom: 16px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
-                    <div>👤 Client PIN: <b style="color:#fff; font-size:15px; font-family:monospace;">${d.client_id}</b></div>
-                    <div>🌐 DNS Hostname: <code style="color:#38bdf8; font-weight:bold; font-size:14px;">${d.dns_url}</code></div>
-                    <div>📅 Expires At: <b style="color:#fbbf24;">${d.expire_date}</b></div>
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+                    <div style="margin-bottom: 8px;"><span style="color: var(--text-muted); font-size: 12px;">Assigned PIN:</span> <b style="color: #38bdf8; font-size: 16px; font-family: monospace;">${client.username}</b></div>
+                    <div style="margin-bottom: 8px;"><span style="color: var(--text-muted); font-size: 12px;">DNS Hostname:</span> <b style="color: #fff; font-size: 14px; font-family: monospace;">${client.dns_url}</b></div>
+                    <div><span style="color: var(--text-muted); font-size: 12px;">Expires At:</span> <span style="color: #fbbf24; font-weight: 700;">${client.expire_date} (${client.duration_days} Days)</span></div>
                 </div>
-                <div style="display:flex; gap: 8px; flex-wrap: wrap;">
-                    <button type="button" class="btn btn-primary" onclick="copyToClipboard('${d.dns_url}', this, '✓ Hostname Copied!')" style="flex:1;">
-                        📋 1. Copy Hostname
-                    </button>
-                    <button type="button" class="btn btn-success" onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(waMsg)}'), this, '✓ Message Copied!')" style="flex:1;">
-                        💬 2. Copy WhatsApp Msg
-                    </button>
-                    <a href="${waLink}" target="_blank" class="btn btn-sm" style="background:#22c55e; color:#fff; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border-radius:6px; font-weight:bold;">
-                        🚀 Send
-                    </a>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="copyToClipboard('${safeDns}', this, '✓ Copied Hostname!')">📋 1. Copy Hostname</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="copyToClipboard('${safeWa}', this, '✓ Copied WhatsApp Msg!')">💬 2. Copy WhatsApp Msg</button>
+                    ${cleanPhone ? `<a href="${waLink}" target="_blank" class="btn btn-success btn-sm">🚀 Send to WhatsApp</a>` : ''}
                 </div>
             `;
-            loadOrders();
             loadBalance();
+            loadOrders();
         } else {
-            resBox.innerHTML = `<div style="color: #f87171; font-weight:700;">❌ ${data.error || "Generation failed"}</div>`;
+            alert("❌ Generation failed: " + (data.error || "Unknown error"));
         }
     } catch (err) {
         alert("Error: " + err.message);
@@ -444,6 +452,110 @@ async function handleManualGenerate(e) {
     }
 }
 
+// -------------------------------------------------------------
+// 🎨 Theme & Content Customizer Logic
+// -------------------------------------------------------------
+function applyColorPreset(primary, accent, bgMode) {
+    document.getElementById("custom-theme-primary").value = primary;
+    document.getElementById("custom-theme-primary-hex").value = primary;
+    document.getElementById("custom-theme-accent").value = accent;
+    document.getElementById("custom-theme-accent-hex").value = accent;
+    document.getElementById("custom-theme-bgmode").value = bgMode;
+}
+
+function updateColorInputs(type) {
+    if (type === "primary") {
+        document.getElementById("custom-theme-primary-hex").value = document.getElementById("custom-theme-primary").value;
+    } else if (type === "accent") {
+        document.getElementById("custom-theme-accent-hex").value = document.getElementById("custom-theme-accent").value;
+    }
+}
+
+function updateColorPickers(type) {
+    if (type === "primary") {
+        const val = document.getElementById("custom-theme-primary-hex").value;
+        if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+            document.getElementById("custom-theme-primary").value = val;
+        }
+    } else if (type === "accent") {
+        const val = document.getElementById("custom-theme-accent-hex").value;
+        if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+            document.getElementById("custom-theme-accent").value = val;
+        }
+    }
+}
+
+async function handleSaveCustomizer(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const btn = document.getElementById("customizer-save-btn");
+    btn.disabled = true;
+    btn.textContent = "Saving Design & Texts...";
+
+    const payload = {
+        // Colors & Theme
+        theme_primary: document.getElementById("custom-theme-primary-hex").value.trim(),
+        theme_accent: document.getElementById("custom-theme-accent-hex").value.trim(),
+        theme_bg_mode: document.getElementById("custom-theme-bgmode").value,
+        
+        // Brand & Identity
+        site_name: document.getElementById("custom-sitename").value.trim(),
+        site_badge: document.getElementById("custom-sitebadge").value.trim(),
+        tagline: document.getElementById("custom-tagline").value.trim(),
+
+        // Hero Content
+        hero_pill_text: document.getElementById("custom-heropill").value.trim(),
+        hero_title_line1: document.getElementById("custom-herotitle1").value.trim(),
+        hero_title_line2: document.getElementById("custom-herotitle2").value.trim(),
+        hero_subtitle: document.getElementById("custom-herosubtitle").value.trim(),
+        btn_hero_buy_text: document.getElementById("custom-btnherobuy").value.trim(),
+        btn_hero_check_text: document.getElementById("custom-btnherocheck").value.trim(),
+
+        // Notice Bar
+        notice_enabled: document.getElementById("custom-noticeenabled").checked,
+        notice: document.getElementById("custom-notice").value.trim(),
+
+        // Section Titles & Buttons
+        pricing_title: document.getElementById("custom-pricingtitle").value.trim(),
+        btn_plan_card_text: document.getElementById("custom-btnplancard").value.trim(),
+        checker_title: document.getElementById("custom-checkertitle").value.trim(),
+        btn_checker_text: document.getElementById("custom-btnchecker").value.trim(),
+        checker_input_placeholder: document.getElementById("custom-checkerplaceholder").value.trim(),
+
+        // Floating Support & Links
+        floating_support_enabled: document.getElementById("custom-floatingsupport").checked,
+        support_whatsapp: document.getElementById("custom-whatsapp").value.trim(),
+        support_whatsapp_msg: document.getElementById("custom-whatsappmsg").value.trim(),
+        support_telegram: document.getElementById("custom-telegram").value.trim(),
+        owner_name: document.getElementById("custom-ownername").value.trim()
+    };
+
+    try {
+        const res = await fetch("/api/admin/settings", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${authToken}`
+            },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert("🎨 Store design, colors & custom texts saved live to your D1 Database!");
+            loadSettings();
+        } else {
+            alert("❌ Failed to save: " + data.error);
+        }
+    } catch (err) {
+        alert("Error: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "💾 Save All Customizer & Design Changes";
+    }
+}
+
+// -------------------------------------------------------------
+// Settings Load
+// -------------------------------------------------------------
 async function loadSettings() {
     try {
         const res = await fetch("/api/admin/settings", {
@@ -452,29 +564,59 @@ async function loadSettings() {
         const json = await res.json();
         if (json.success && json.data) {
             const s = json.data;
+
+            // Core Settings Tab
             if (s.reseller_api_key) document.getElementById("setting-apikey").value = s.reseller_api_key;
             if (s.main_api_url) document.getElementById("setting-apiurl").value = s.main_api_url;
-            if (s.site_name) document.getElementById("setting-sitename").value = s.site_name;
-            if (s.tagline) document.getElementById("setting-tagline").value = s.tagline;
-            if (s.support_whatsapp) document.getElementById("setting-whatsapp").value = s.support_whatsapp;
-            if (s.notice) document.getElementById("setting-notice").value = s.notice;
 
-            // Email Settings
-            if (s.email_provider) {
-                document.getElementById("setting-emailprovider").value = s.email_provider;
-            }
+            // Email & OTP Tab
+            if (s.email_provider) document.getElementById("setting-emailprovider").value = s.email_provider;
             if (s.brevo_api_key) document.getElementById("setting-brevoapikey").value = s.brevo_api_key;
             if (s.brevo_sender_email) document.getElementById("setting-brevosenderemail").value = s.brevo_sender_email;
             if (s.brevo_sender_name) document.getElementById("setting-brevosendername").value = s.brevo_sender_name;
             if (s.smtp_gmail_email) document.getElementById("setting-gmailemail").value = s.smtp_gmail_email;
             if (s.smtp_gmail_app_password) document.getElementById("setting-gmailapppassword").value = s.smtp_gmail_app_password;
             if (s.smtp_sender_name) document.getElementById("setting-gmailsendername").value = s.smtp_sender_name;
-
-            // Anti-Bot & Turnstile Settings
             if (s.turnstile_site_key) document.getElementById("setting-turnstilesitekey").value = s.turnstile_site_key;
             if (s.turnstile_secret_key) document.getElementById("setting-turnstilesecretkey").value = s.turnstile_secret_key;
-
             toggleEmailProviderFields();
+
+            // Customizer Tab Fields
+            if (s.theme_primary) {
+                document.getElementById("custom-theme-primary").value = s.theme_primary;
+                document.getElementById("custom-theme-primary-hex").value = s.theme_primary;
+            }
+            if (s.theme_accent) {
+                document.getElementById("custom-theme-accent").value = s.theme_accent;
+                document.getElementById("custom-theme-accent-hex").value = s.theme_accent;
+            }
+            if (s.theme_bg_mode) document.getElementById("custom-theme-bgmode").value = s.theme_bg_mode;
+
+            if (s.site_name) document.getElementById("custom-sitename").value = s.site_name;
+            if (s.site_badge) document.getElementById("custom-sitebadge").value = s.site_badge;
+            if (s.tagline) document.getElementById("custom-tagline").value = s.tagline;
+
+            if (s.hero_pill_text) document.getElementById("custom-heropill").value = s.hero_pill_text;
+            if (s.hero_title_line1) document.getElementById("custom-herotitle1").value = s.hero_title_line1;
+            if (s.hero_title_line2) document.getElementById("custom-herotitle2").value = s.hero_title_line2;
+            if (s.hero_subtitle) document.getElementById("custom-herosubtitle").value = s.hero_subtitle;
+            if (s.btn_hero_buy_text) document.getElementById("custom-btnherobuy").value = s.btn_hero_buy_text;
+            if (s.btn_hero_check_text) document.getElementById("custom-btnherocheck").value = s.btn_hero_check_text;
+
+            document.getElementById("custom-noticeenabled").checked = s.notice_enabled !== undefined ? Boolean(s.notice_enabled) : true;
+            if (s.notice) document.getElementById("custom-notice").value = s.notice;
+
+            if (s.pricing_title) document.getElementById("custom-pricingtitle").value = s.pricing_title;
+            if (s.btn_plan_card_text) document.getElementById("custom-btnplancard").value = s.btn_plan_card_text;
+            if (s.checker_title) document.getElementById("custom-checkertitle").value = s.checker_title;
+            if (s.btn_checker_text) document.getElementById("custom-btnchecker").value = s.btn_checker_text;
+            if (s.checker_input_placeholder) document.getElementById("custom-checkerplaceholder").value = s.checker_input_placeholder;
+
+            document.getElementById("custom-floatingsupport").checked = s.floating_support_enabled !== undefined ? Boolean(s.floating_support_enabled) : true;
+            if (s.support_whatsapp) document.getElementById("custom-whatsapp").value = s.support_whatsapp;
+            if (s.support_whatsapp_msg) document.getElementById("custom-whatsappmsg").value = s.support_whatsapp_msg;
+            if (s.support_telegram) document.getElementById("custom-telegram").value = s.support_telegram;
+            if (s.owner_name) document.getElementById("custom-ownername").value = s.owner_name;
         }
     } catch (_) {}
 }
@@ -569,10 +711,6 @@ async function handleSaveSettings(e) {
     const payload = {
         reseller_api_key: document.getElementById("setting-apikey").value.trim(),
         main_api_url: document.getElementById("setting-apiurl").value.trim(),
-        site_name: document.getElementById("setting-sitename").value.trim(),
-        tagline: document.getElementById("setting-tagline").value.trim(),
-        support_whatsapp: document.getElementById("setting-whatsapp").value.trim(),
-        notice: document.getElementById("setting-notice").value.trim(),
         turnstile_site_key: document.getElementById("setting-turnstilesitekey").value.trim(),
         turnstile_secret_key: document.getElementById("setting-turnstilesecretkey").value.trim()
     };
@@ -598,7 +736,7 @@ async function handleSaveSettings(e) {
                 localStorage.setItem("store_admin_token", authToken);
                 document.getElementById("setting-newpassword").value = "";
             }
-            alert("✅ Store settings saved successfully to your D1 Database!");
+            alert("✅ Store & API settings saved successfully to your D1 Database!");
             loadSettings();
             loadBalance();
         } else {
