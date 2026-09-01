@@ -126,6 +126,18 @@ body::after {
     text-decoration: none;
     letter-spacing: -0.5px;
 }
+.site-custom-logo {
+    max-height: 38px;
+    max-width: 160px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+.brand-default-icon {
+    font-size: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
 .brand-badge {
     background: linear-gradient(135deg, var(--primary), var(--accent-cyan));
     color: #fff;
@@ -287,7 +299,7 @@ body::after {
     text-decoration: none;
     border: none;
     cursor: pointer;
-    transition: 0.25s;
+    transition: 0.2s;
     box-shadow: 0 4px 20px -2px rgba(99, 102, 241, 0.4);
     display: inline-flex;
     align-items: center;
