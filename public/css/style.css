@@ -135,16 +135,49 @@ code {
     overflow-wrap: break-word;
 }
 
-/* Notice Announcement Bar */
+/* Notice Announcement Bar (Continuous Smooth Infinite Sliding Marquee) */
 .notice-bar {
-    background: linear-gradient(90deg, rgba(99, 102, 241, 0.15), rgba(6, 182, 212, 0.15));
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.18), rgba(6, 182, 212, 0.18));
     border-bottom: 1px solid var(--border-color);
-    padding: 8px 15px;
-    text-align: center;
+    padding: 8px 0;
     font-size: 13px;
     font-weight: 600;
-    color: #e2e8f0;
+    color: #f1f5f9;
     overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+    z-index: 90;
+    display: flex;
+    align-items: center;
+}
+
+.notice-marquee-track {
+    display: inline-flex;
+    width: max-content;
+    will-change: transform;
+    animation: noticeMarqueeScroll 25s linear infinite;
+}
+
+.notice-marquee-track:hover {
+    animation-play-state: paused;
+}
+
+.notice-marquee-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 16px;
+    padding-right: 80px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+@keyframes noticeMarqueeScroll {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
 }
 
 /* Header & Navigation */

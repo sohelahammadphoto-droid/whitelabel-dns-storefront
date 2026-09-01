@@ -209,10 +209,13 @@ function renderConfig() {
         if (el) el.textContent = siteConfig.owner_name;
     }
 
-    // --- 3. Notice Announcement Bar ---
+    // --- 3. Notice Announcement Bar (Continuous Sliding Marquee) ---
     const noticeText = document.getElementById("notice-text");
-    if (noticeText && siteConfig.notice) {
-        noticeText.textContent = siteConfig.notice;
+    const noticeClone = document.getElementById("notice-text-clone");
+    if (siteConfig.notice) {
+        const textContent = siteConfig.notice.startsWith("⚡") ? siteConfig.notice : `⚡ ${siteConfig.notice}`;
+        if (noticeText) noticeText.textContent = textContent;
+        if (noticeClone) noticeClone.textContent = textContent;
     }
 
     // --- 4. Hero Section ---
