@@ -1331,3 +1331,50 @@ async function handleSaveSettings(e) {
         alert("Error: " + err.message);
     }
 }
+
+// ─── Telegram Test Alert ────────────────────────────────────────────────────
+async function handleSendTestTelegram() {
+    const btn = document.getElementById("test-telegram-btn");
+    const status = document.getElementById("test-telegram-status");
+
+    const token = (document.getElementById("setting-telegrambottoken")?.value || "").trim();
+    const chatId = (document.getElementById("setting-telegramchatid")?.value || "").trim();
+
+    if (!token || !chatId) {
+        status.style.display = "inline";
+        status.style.color = "#f87171";
+        status.textContent = "❌ Please enter Bot Token and Chat ID first.";
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "⏳ Sending...";
+    status.style.display = "none";
+
+    try {
+        const res = await fetch("/api/admin/test-telegram", {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({ bot_token: token, chat_id: chatId })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            status.style.display = "inline";
+            status.style.color = "#34d399";
+            status.textContent = "✅ " + (data.message || "Test message sent to Telegram!");
+        } else {
+            status.style.display = "inline";
+            status.style.color = "#f87171";
+            status.textContent = "❌ " + (data.error || "Unknown error");
+        }
+    } catch (err) {
+        status.style.display = "inline";
+        status.style.color = "#f87171";
+        status.textContent = "❌ Network error: " + err.message;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "🧪 Send Test Telegram Alert";
+    }
+}
