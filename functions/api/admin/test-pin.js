@@ -14,6 +14,7 @@ export async function onRequestPost(context) {
 
     try {
         const body = await request.json();
+        const username = (body.username || "").trim().toLowerCase();
         const phone = (body.phone || "").trim();
         const note = (body.note || "Store Admin 30-Min Trial").trim();
 
