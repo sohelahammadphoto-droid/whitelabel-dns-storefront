@@ -48,18 +48,18 @@ export async function onRequestGet(context) {
                             const liveStatus = String(liveUser.status || "").toLowerCase(); // 'active', 'rejected', 'banned', 'expired'
                             
                             if (liveStatus === "rejected" || liveStatus === "banned" || liveStatus === "disabled" || !liveUser.dns_url) {
-                                clone.status = "banned";
+                                clone.status = liveStatus === "active" ? "banned" : liveStatus;
                                 clone.live_banned = true;
-                                clone.ban_reason = liveUser.ban_reason || liveUser.reason || "⚠️ Payment Due / Anti-Theft Policy Violation";
+                                clone.ban_reason = liveUser.ban_reason || liveUser.reason || "";
                                 clone.detected_ips = liveUser.detected_ips || liveUser.violating_ips || liveUser.ips || [];
                                 clone.banned_at = liveUser.banned_at || "";
                                 // Sync local DB in background
-                                if (env.DB && o.status !== "banned") {
-                                    env.DB.prepare("UPDATE orders SET status = 'banned' WHERE id = ?").bind(o.id).run().catch(() => {});
+                                if (env.DB && o.status !== "banned" && o.status !== "rejected") {
+                                    env.DB.prepare("UPDATE orders SET status = ? WHERE id = ?").bind(clone.status, o.id).run().catch(() => {});
                                 }
                             } else if (liveStatus === "expired") {
                                 clone.status = "expired";
-                                clone.ban_reason = "Service validity expired.";
+                                clone.ban_reason = liveUser.ban_reason || "";
                                 if (env.DB && o.status !== "expired") {
                                     env.DB.prepare("UPDATE orders SET status = 'expired' WHERE id = ?").bind(o.id).run().catch(() => {});
                                 }

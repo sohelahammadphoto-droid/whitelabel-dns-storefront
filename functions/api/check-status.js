@@ -56,7 +56,7 @@ export async function onRequestGet(context) {
         }
 
         const isBanned = effectiveStatus === "rejected" || effectiveStatus === "banned" || effectiveStatus === "disabled";
-        const banReason = liveDnsStatus?.ban_reason || liveDnsStatus?.reason || (isBanned ? "⚠️ Payment Due / Anti-Theft Policy Violation" : null);
+        const banReason = liveDnsStatus?.ban_reason || liveDnsStatus?.reason || "";
         const detectedIps = liveDnsStatus?.detected_ips || liveDnsStatus?.violating_ips || liveDnsStatus?.ips || [];
 
         return json({
