@@ -83,6 +83,8 @@
                 <ul class="admin-nav">
                     <li class="admin-nav-item active" onclick="showTab('analytics')">📊 Analytics & Insights</li>
                     <li class="admin-nav-item" onclick="showTab('orders')">📋 Orders & Sales</li>
+                    <li class="admin-nav-item" onclick="showTab('payments')">💳 Payment Gateways & Numbers</li>
+                    <li class="admin-nav-item" onclick="showTab('plans')">📦 Pricing Packages & Plans</li>
                     <li class="admin-nav-item" onclick="showTab('customizer')">🎨 Themes & Sections (Page Builder)</li>
                     <li class="admin-nav-item" onclick="showTab('coupons')">🎟️ Discount Coupons</li>
                     <li class="admin-nav-item" onclick="showTab('staff')">👥 Staff & Sub-Resellers</li>
@@ -197,6 +199,46 @@
                                 <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading orders...</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: 💳 PAYMENT METHODS & NUMBERS MANAGER -->
+            <div id="tab-payments" class="tab-content" style="display: none;">
+                <div class="card-box" style="max-width: 860px;">
+                    <div class="box-header">
+                        <div>
+                            <div class="box-title">💳 Payment Methods & Accounts Setup</div>
+                            <span style="font-size: 12px; color: var(--text-muted);">Manage your customer checkout payment options (bKash, Nagad, STC Pay, Urpay, Bank, USDT, etc.).</span>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="addPaymentMethod()">+ Add Payment Method</button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="savePaymentMethods()">💾 Save Payment Methods</button>
+                        </div>
+                    </div>
+
+                    <div id="payment-methods-admin-container" style="display: flex; flex-direction: column; gap: 16px; margin-top: 15px;">
+                        <!-- Dynamically populated payment method cards -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: 📦 PRICING PACKAGES & PLANS MANAGER -->
+            <div id="tab-plans" class="tab-content" style="display: none;">
+                <div class="card-box" style="max-width: 860px;">
+                    <div class="box-header">
+                        <div>
+                            <div class="box-title">📦 Pricing Packages & Duration Editor</div>
+                            <span style="font-size: 12px; color: var(--text-muted);">Configure package names, validity duration (days), prices, feature lists, and popular badges.</span>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="addPlanItem()">+ Add New Package</button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="savePlans()">💾 Save Packages</button>
+                        </div>
+                    </div>
+
+                    <div id="plans-admin-container" style="display: flex; flex-direction: column; gap: 16px; margin-top: 15px;">
+                        <!-- Dynamically populated plan cards -->
                     </div>
                 </div>
             </div>

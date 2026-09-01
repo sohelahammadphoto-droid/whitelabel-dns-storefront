@@ -91,12 +91,15 @@ export async function initDb(env) {
                 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)
             `),
             env.DB.prepare(`
-                CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email)
-            `),
-            env.DB.prepare(`
                 CREATE INDEX IF NOT EXISTS idx_coupons_code ON coupons(code)
             `)
         ]);
+
+        // Automated Schema Upgrades & Migrations
+        try {
+            await env.DB.prepare("ALTER TABLE orders ADD COLUMN customer_id INTEGER").run();
+        } catch (_) {}
+
         return true;
     } catch (e) {
         console.error("D1 Init error:", e);

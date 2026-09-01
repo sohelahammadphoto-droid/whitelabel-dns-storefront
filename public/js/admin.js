@@ -3,6 +3,8 @@ let adminPassword = localStorage.getItem("admin_password") || "";
 let cachedSettings = {};
 let currentFaqs = [];
 let currentTestimonials = [];
+let currentPaymentMethods = [];
+let currentPlans = [];
 
 document.addEventListener("DOMContentLoaded", () => {
     checkSetupStatus();
@@ -155,7 +157,7 @@ async function verifyAndLaunch() {
 // Navigation Tab Switcher
 // ----------------------------------------------------
 function showTab(tabName) {
-    const tabs = ["analytics", "orders", "customizer", "coupons", "staff", "testpin", "generate", "email", "settings"];
+    const tabs = ["analytics", "orders", "payments", "plans", "customizer", "coupons", "staff", "testpin", "generate", "email", "settings"];
     tabs.forEach(t => {
         const el = document.getElementById(`tab-${t}`);
         if (el) el.style.display = (t === tabName) ? "block" : "none";
@@ -179,28 +181,35 @@ function showTab(tabName) {
         if (titleEl) titleEl.textContent = "Orders & Sales";
         if (subEl) subEl.textContent = "Manage customer payments and DNS activations";
         loadOrders();
+    } else if (tabName === "payments") {
+        if (titleEl) titleEl.textContent = "Payment Gateways & Numbers";
+        if (subEl) subEl.textContent = "Set up your bKash, Nagad, STC Pay, Urpay, Bank, and USDT accounts";
+        renderAdminPaymentMethods();
+    } else if (tabName === "plans") {
+        if (titleEl) titleEl.textContent = "Pricing Packages & Plans";
+        if (subEl) subEl.textContent = "Manage subscription packages, validity durations, prices, and features";
+        renderAdminPlans();
     } else if (tabName === "customizer") {
-        if (titleEl) titleEl.textContent = "Themes & Page Builder";
-        if (subEl) subEl.textContent = "Design studio, section toggles, FAQs, reviews, and custom codes";
+        if (titleEl) titleEl.textContent = "Themes & Sections (Page Builder)";
+        if (subEl) subEl.textContent = "Design studio, live colors, branding, and section visibility";
     } else if (tabName === "coupons") {
         if (titleEl) titleEl.textContent = "Discount Coupons";
-        if (subEl) subEl.textContent = "Create and manage promotional discount coupons for checkout";
+        if (subEl) subEl.textContent = "Create promotional promo codes and discounts for customers";
         loadCoupons();
     } else if (tabName === "staff") {
         if (titleEl) titleEl.textContent = "Staff & Sub-Resellers";
-        if (subEl) subEl.textContent = "Manage sub-resellers and support agent accounts";
+        if (subEl) subEl.textContent = "Manage team members, roles, and sub-reseller accounts";
         loadStaff();
     } else if (tabName === "testpin") {
         if (titleEl) titleEl.textContent = "30-Min Test PIN Generator";
-        if (subEl) subEl.textContent = "Instant trial PINs for prospective customers";
+        if (subEl) subEl.textContent = "Generate instant free trials for potential customers";
     } else if (tabName === "generate") {
         if (titleEl) titleEl.textContent = "Full Pass PIN Generation";
-        if (subEl) subEl.textContent = "Manual generation using your main platform credits";
+        if (subEl) subEl.textContent = "Directly issue paid private DNS hostnames using your main balance";
     } else if (tabName === "email") {
-        if (titleEl) titleEl.textContent = "Email & Notifications";
-        if (subEl) subEl.textContent = "Configure automated Gmail OTP and order approval emails";
+        if (titleEl) titleEl.textContent = "Email & OTP Gateway";
+        if (subEl) subEl.textContent = "Configure automated invoice and customer verification delivery";
     } else if (tabName === "settings") {
-        if (titleEl) titleEl.textContent = "Store & API Settings";
         if (subEl) subEl.textContent = "Telegram alerts, Reseller API key, and security";
     }
 }
@@ -508,6 +517,14 @@ async function loadSettings() {
         setVal("setting-brevosendername", d.brevo_sender_name || "");
         toggleEmailProviderFields();
 
+        // Payment methods
+        currentPaymentMethods = d.payment_methods || [];
+        renderAdminPaymentMethods();
+
+        // Pricing plans
+        currentPlans = d.plans || [];
+        renderAdminPlans();
+
         // FAQ items
         currentFaqs = d.faqs || [];
         renderAdminFaqs();
@@ -519,6 +536,170 @@ async function loadSettings() {
         console.error("Settings load error:", e);
     }
 }
+
+// ----------------------------------------------------
+// 💳 Payment Methods Visual Manager
+// ----------------------------------------------------
+function renderAdminPaymentMethods() {
+    const container = document.getElementById("payment-methods-admin-container");
+    if (!container) return;
+
+    if (currentPaymentMethods.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; color: var(--text-muted); padding: 30px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px;">
+                No payment methods added yet. Click <b>"+ Add Payment Method"</b> above to add bKash, Nagad, STC Pay, etc.
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = currentPaymentMethods.map((m, i) => `
+        <div class="dynamic-item-card" style="background: rgba(18, 26, 43, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 16px;">
+            <div class="dynamic-item-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); padding-bottom: 8px;">
+                <span style="font-weight: 800; color: #38bdf8; font-size: 13px;">💳 Payment Method #${i + 1}</span>
+                <button type="button" class="btn-delete-item" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px;" onclick="deletePaymentMethod(${i})">✕ Delete</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 10px;">
+                <div>
+                    <label style="display:block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Method Name *</label>
+                    <input type="text" class="form-control" placeholder="e.g. bKash (Send Money) or STC Pay" value="${m.name || ''}" oninput="currentPaymentMethods[${i}].name = this.value; currentPaymentMethods[${i}].id = (currentPaymentMethods[${i}].id || this.value.toLowerCase().replace(/[^a-z0-9]/g, ''))">
+                </div>
+                <div>
+                    <label style="display:block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Number / Wallet Address *</label>
+                    <input type="text" class="form-control" placeholder="e.g. 01700000000 or Wallet Address" value="${m.number || ''}" oninput="currentPaymentMethods[${i}].number = this.value">
+                </div>
+                <div>
+                    <label style="display:block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Account Type / Name</label>
+                    <input type="text" class="form-control" placeholder="e.g. Personal / Merchant" value="${m.account_name || ''}" oninput="currentPaymentMethods[${i}].account_name = this.value">
+                </div>
+            </div>
+            <div>
+                <label style="display:block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Customer Instructions / Note</label>
+                <input type="text" class="form-control" placeholder="e.g. Send Money to this bKash number and paste the TrxID below." value="${m.instructions || ''}" oninput="currentPaymentMethods[${i}].instructions = this.value">
+            </div>
+        </div>
+    `).join('');
+}
+
+window.addPaymentMethod = function() {
+    currentPaymentMethods.push({
+        id: "method_" + Date.now(),
+        name: "New Payment Method",
+        number: "01700000000",
+        account_name: "Personal",
+        instructions: "Send payment to this account and copy TrxID."
+    });
+    renderAdminPaymentMethods();
+};
+
+window.deletePaymentMethod = function(idx) {
+    if (confirm("Are you sure you want to delete this payment method?")) {
+        currentPaymentMethods.splice(idx, 1);
+        renderAdminPaymentMethods();
+    }
+};
+
+window.savePaymentMethods = async function() {
+    try {
+        const res = await fetch("/api/admin/settings", {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({ payment_methods: currentPaymentMethods })
+        });
+        const json = await res.json();
+        if (json.success) {
+            alert("🎉 Payment methods saved successfully! Customer checkout updated.");
+        } else {
+            alert("❌ " + json.error);
+        }
+    } catch (e) {
+        alert("Error saving payment methods: " + e.message);
+    }
+};
+
+// ----------------------------------------------------
+// 📦 Pricing Packages Visual Manager
+// ----------------------------------------------------
+function renderAdminPlans() {
+    const container = document.getElementById("plans-admin-container");
+    if (!container) return;
+
+    if (currentPlans.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; color: var(--text-muted); padding: 30px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px;">
+                No pricing packages configured. Click <b>"+ Add New Package"</b> above.
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = currentPlans.map((p, i) => `
+        <div class="dynamic-item-card" style="background: rgba(18, 26, 43, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 16px;">
+            <div class="dynamic-item-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); padding-bottom: 8px;">
+                <span style="font-weight: 800; color: #a78bfa; font-size: 13px;">📦 Package #${i + 1}</span>
+                <button type="button" class="btn-delete-item" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px;" onclick="deletePlanItem(${i})">✕ Delete</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 10px;">
+                <div>
+                    <label style="display:block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Package Name *</label>
+                    <input type="text" class="form-control" placeholder="e.g. 1 Month VIP Pass" value="${p.name || ''}" oninput="currentPlans[${i}].name = this.value; currentPlans[${i}].id = (currentPlans[${i}].id || 'plan_' + (i+1))">
+                </div>
+                <div>
+                    <label style="display:block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Duration (Days) *</label>
+                    <input type="number" class="form-control" placeholder="30" value="${p.duration_days || 30}" min="1" oninput="currentPlans[${i}].duration_days = parseInt(this.value) || 30">
+                </div>
+                <div>
+                    <label style="display:block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Price (Store Currency) *</label>
+                    <input type="number" class="form-control" placeholder="15" value="${p.price || 0}" min="0" step="any" oninput="currentPlans[${i}].price = parseFloat(this.value) || 0">
+                </div>
+                <div>
+                    <label style="display:block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Badge (Optional)</label>
+                    <input type="text" class="form-control" placeholder="MOST POPULAR" value="${p.badge || ''}" oninput="currentPlans[${i}].badge = this.value; currentPlans[${i}].popular = Boolean(this.value)">
+                </div>
+            </div>
+            <div>
+                <label style="display:block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Features (Comma separated)</label>
+                <input type="text" class="form-control" placeholder="30 Days Validity, All Banking Apps, Zero Speed Drop, 24/7 Support" value="${Array.isArray(p.features) ? p.features.join(', ') : (p.features || '')}" oninput="currentPlans[${i}].features = this.value.split(',').map(s => s.trim()).filter(Boolean)">
+            </div>
+        </div>
+    `).join('');
+}
+
+window.addPlanItem = function() {
+    currentPlans.push({
+        id: "plan_" + Date.now(),
+        name: "New Custom Pass",
+        duration_days: 30,
+        price: 20,
+        popular: false,
+        badge: "",
+        features: ["30 Days Validity", "All Banking Apps Unlocked", "Zero Speed Drop", "Dedicated Support"]
+    });
+    renderAdminPlans();
+};
+
+window.deletePlanItem = function(idx) {
+    if (confirm("Are you sure you want to delete this package?")) {
+        currentPlans.splice(idx, 1);
+        renderAdminPlans();
+    }
+};
+
+window.savePlans = async function() {
+    try {
+        const res = await fetch("/api/admin/settings", {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({ plans: currentPlans })
+        });
+        const json = await res.json();
+        if (json.success) {
+            alert("🎉 Pricing packages saved successfully! Storefront updated.");
+        } else {
+            alert("❌ " + json.error);
+        }
+    } catch (e) {
+        alert("Error saving plans: " + e.message);
+    }
+};
 
 function setVal(id, val) {
     const el = document.getElementById(id);
