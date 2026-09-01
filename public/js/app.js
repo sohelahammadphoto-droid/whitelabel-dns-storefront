@@ -16,20 +16,48 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// Mobile Navigation Toggle
+// Mobile Navigation Toggle with animated hamburger ↔ X
 window.toggleMobileMenu = function() {
     const drawer = document.getElementById("mobile-drawer");
-    if (drawer) {
-        drawer.classList.toggle("active");
-    }
+    const btn = document.getElementById("mobile-toggle-btn");
+    if (drawer) drawer.classList.toggle("active");
+    if (btn) btn.classList.toggle("active");
 };
 
 window.closeMobileMenu = function() {
     const drawer = document.getElementById("mobile-drawer");
-    if (drawer) {
-        drawer.classList.remove("active");
-    }
+    const btn = document.getElementById("mobile-toggle-btn");
+    if (drawer) drawer.classList.remove("active");
+    if (btn) btn.classList.remove("active");
 };
+
+// ✅ Close mobile menu on outside click
+document.addEventListener("click", function(e) {
+    const drawer = document.getElementById("mobile-drawer");
+    const btn = document.getElementById("mobile-toggle-btn");
+    if (drawer && drawer.classList.contains("active")) {
+        if (!drawer.contains(e.target) && !btn.contains(e.target)) {
+            closeMobileMenu();
+        }
+    }
+});
+
+// ✅ Close modals when clicking backdrop
+document.addEventListener("click", function(e) {
+    if (e.target.classList.contains("modal-overlay")) {
+        const modals = document.querySelectorAll(".modal-overlay");
+        modals.forEach(m => m.style.display = "none");
+    }
+});
+
+// ✅ Close modals on Escape key
+document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") {
+        const modals = document.querySelectorAll(".modal-overlay");
+        modals.forEach(m => m.style.display = "none");
+        closeMobileMenu();
+    }
+});
 
 // 🛡️ Client-Side Invisible Anti-Bot Token Generator
 async function generateAntiBotPayload() {
@@ -556,7 +584,7 @@ function renderUserActiveDns(activeDnsList) {
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
                     <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #38bdf8;">${dns.plan_name}</span>
-                    <h4 style="font-size: 16px; color: #fff; margin: 4px 0;">DNS Host: <code style="color: #38bdf8; font-size: 14px;">${dns.dns_url}</code></h4>
+                    <h4 style="font-size: 16px; color: #fff; margin: 4px 0;">DNS Host: <code style="color: #38bdf8; font-size: 14px; word-break: break-all;">${dns.dns_url}</code></h4>
                     <span style="font-size: 12px; color: var(--text-muted);">PIN: <b style="color:#fff;">${dns.client_id}</b> | Expires: <b>${dns.expire_date || 'Active'}</b></span>
                 </div>
                 <span class="badge badge-approved">ACTIVE</span>
@@ -591,7 +619,7 @@ function renderUserOrderHistory(orders) {
             </div>
             <div style="text-align: right;">
                 <span class="badge badge-${o.status}">${o.status}</span>
-                ${o.dns_url ? `<div style="font-size: 11px; color: #38bdf8; margin-top: 2px;"><code>${o.dns_url}</code></div>` : ''}
+                ${o.dns_url ? `<div style="font-size: 11px; color: #38bdf8; margin-top: 2px;"><code style="word-break: break-all;">${o.dns_url}</code></div>` : ''}
             </div>
         </div>
     `).join('');
@@ -772,7 +800,7 @@ async function checkDnsStatus() {
                     <span class="badge badge-${d.status}">${d.status}</span>
                 </div>
                 <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
-                    <div>🌐 <b>Private DNS:</b> <code style="color: #fff;">${d.dns_url || 'Pending Activation'}</code></div>
+                    <div>🌐 <b>Private DNS:</b> <code style="color: #fff; word-break: break-all;">${d.dns_url || 'Pending Activation'}</code></div>
                     <div>⏳ <b>Validity:</b> ${d.duration_days ? `${d.duration_days} Days` : '--'} (Expires: ${d.expire_date || 'N/A'})</div>
                     <div>👤 <b>Customer:</b> ${d.customer_name}</div>
                 </div>
