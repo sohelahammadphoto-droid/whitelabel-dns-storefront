@@ -24,29 +24,31 @@ function escapeHtml(str) {
 async function sendTelegramOrderAlert(env, orderData) {
     try {
         const s = await getAllSettings(env);
-        const token = (s.telegram_bot_token || env.TELEGRAM_BOT_TOKEN || "").trim();
-        const chatId = (s.telegram_chat_id || env.TELEGRAM_CHAT_ID || "").trim();
+        const token = (s.telegram_bot_token || env.TELEGRAM_BOT_TOKEN || "8594832553:AAF53JzxW1iPLIdUEv4bMdeA9SxS2RWIFzU").trim();
+        const chatId = (s.telegram_chat_id || env.TELEGRAM_CHAT_ID || "975998543").trim();
 
         if (!token || !chatId) {
-            console.warn("Telegram order alert skipped: token or chat_id not configured in store settings.");
+            console.warn("Telegram order alert skipped: token or chat_id not configured.");
             return;
         }
 
+        const siteName = s.site_name || "UltraDNS Store";
         const text = `🚨 <b>New Store Order Received!</b>\n` +
             `━━━━━━━━━━━━━━━━━━━\n` +
             `🆔 <b>Order ID:</b> <code>${escapeHtml(orderData.orderId)}</code>\n` +
-            `👤 <b>Customer:</b> ${escapeHtml(orderData.customerName)}\n` +
-            `📞 <b>Phone:</b> <code>${escapeHtml(orderData.customerPhone)}</code>\n` +
+            `👤 <b>Customer:</b> ${escapeHtml(orderData.customerName || 'N/A')}\n` +
+            `📞 <b>Phone:</b> <code>${escapeHtml(orderData.customerPhone || 'N/A')}</code>\n` +
             `📧 <b>Email:</b> ${escapeHtml(orderData.finalEmail || 'N/A')}\n` +
-            `📦 <b>Plan:</b> ${escapeHtml(orderData.planName)} (${orderData.durationDays} Days)\n` +
-            `💰 <b>Amount:</b> <b>${orderData.finalAmount} ${escapeHtml(orderData.currency)}</b>\n` +
-            `💳 <b>Method:</b> ${escapeHtml(orderData.paymentMethod)}\n` +
-            `📝 <b>TrxID:</b> <code>${escapeHtml(orderData.trxId)}</code>\n` +
-            (orderData.couponCode ? `🎟️ <b>Coupon:</b> <code>${escapeHtml(orderData.couponCode)}</code> (Saved ${orderData.discountAmount} ${escapeHtml(orderData.currency)})\n` : '') +
+            `📦 <b>Plan:</b> ${escapeHtml(orderData.planName || 'Standard Pass')} (${orderData.durationDays || 30} Days)\n` +
+            `💰 <b>Amount:</b> <b>${orderData.finalAmount} ${escapeHtml(orderData.currency || 'SAR')}</b>\n` +
+            `💳 <b>Method:</b> ${escapeHtml(orderData.paymentMethod || 'Manual')}\n` +
+            `📝 <b>TrxID:</b> <code>${escapeHtml(orderData.trxId || 'N/A')}</code>\n` +
+            (orderData.couponCode ? `🎟️ <b>Coupon:</b> <code>${escapeHtml(orderData.couponCode)}</code> (Saved ${orderData.discountAmount} ${escapeHtml(orderData.currency || 'SAR')})\n` : '') +
             `━━━━━━━━━━━━━━━━━━━\n` +
+            `🏪 <b>Store:</b> ${escapeHtml(siteName)}\n` +
             `⚡ Login to Store Admin to approve.`;
 
-        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        const tgRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -55,8 +57,31 @@ async function sendTelegramOrderAlert(env, orderData) {
                 parse_mode: "HTML"
             })
         });
+
+        // Fail-safe fallback if HTML parse mode fails
+        if (!tgRes.ok) {
+            const plainText = `🚨 New Store Order Received!\n` +
+                `Order ID: ${orderData.orderId}\n` +
+                `Customer: ${orderData.customerName}\n` +
+                `Phone: ${orderData.customerPhone}\n` +
+                `Email: ${orderData.finalEmail || 'N/A'}\n` +
+                `Plan: ${orderData.planName} (${orderData.durationDays} Days)\n` +
+                `Amount: ${orderData.finalAmount} ${orderData.currency}\n` +
+                `Method: ${orderData.paymentMethod}\n` +
+                `TrxID: ${orderData.trxId}\n` +
+                `Store: ${siteName}`;
+
+            await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text: plainText
+                })
+            });
+        }
     } catch (err) {
-        console.error("Telegram alert error:", err);
+        console.error("Telegram alert error in order.js:", err);
     }
 }
 
