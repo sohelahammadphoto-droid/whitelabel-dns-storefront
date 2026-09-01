@@ -1,9 +1,47 @@
 // functions/api/order.js — Public & Authenticated Customer Order Submission API
-import { initDb, verifyCustomerAuth, json, handleOptions } from "./_db.js";
+import { initDb, verifyCustomerAuth, getAllSettings, json, handleOptions } from "./_db.js";
 import { verifyAntiBot } from "./_antibot.js";
 
 export async function onRequestOptions() {
     return handleOptions();
+}
+
+// Telegram alert helper
+async function sendTelegramOrderAlert(env, orderData) {
+    try {
+        const s = await getAllSettings(env);
+        const token = s.telegram_bot_token || env.TELEGRAM_BOT_TOKEN;
+        const chatId = s.telegram_chat_id || env.TELEGRAM_CHAT_ID;
+        const isEnabled = s.telegram_alerts_enabled !== undefined ? Boolean(s.telegram_alerts_enabled) : true;
+
+        if (!token || !chatId || !isEnabled) return;
+
+        const text = `🚨 *New Store Order Received!*
+━━━━━━━━━━━━━━━━━━━
+🆔 *Order ID:* \`${orderData.orderId}\`
+👤 *Customer:* ${orderData.customerName}
+📞 *Phone:* \`${orderData.customerPhone}\`
+📧 *Email:* ${orderData.finalEmail || 'N/A'}
+📦 *Plan:* ${orderData.planName} (${orderData.durationDays} Days)
+💰 *Amount:* *${orderData.finalAmount} ${orderData.currency}*
+💳 *Method:* ${orderData.paymentMethod}
+📝 *TrxID:* \`${orderData.trxId}\`
+${orderData.couponCode ? `🎟️ *Coupon:* \`${orderData.couponCode}\` (Saved ${orderData.discountAmount} ${orderData.currency})` : ''}
+━━━━━━━━━━━━━━━━━━━
+⚡ Login to your Store Admin to approve.`;
+
+        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                chat_id: chatId,
+                text: text,
+                parse_mode: "Markdown"
+            })
+        });
+    } catch (err) {
+        console.error("Telegram alert error:", err);
+    }
 }
 
 export async function onRequestPost(context) {
@@ -24,6 +62,7 @@ export async function onRequestPost(context) {
         const planId = (body.plan_id || "").trim();
         const paymentMethod = (body.payment_method || "").trim();
         const trxId = (body.trx_id || "").trim();
+        const couponCode = (body.coupon_code || "").trim().toUpperCase();
 
         if (!customerName || !customerPhone || !planId || !paymentMethod || !trxId) {
             return json({ success: false, error: "Please fill in all required fields (Name, Phone, Plan, Payment Method, Transaction ID)" }, 400);
@@ -41,8 +80,37 @@ export async function onRequestPost(context) {
         // Map plan details from body or fallback
         const durationDays = parseInt(body.duration_days, 10) || 30;
         const planName = (body.plan_name || `${durationDays} Days Pass`).trim();
-        const amount = parseFloat(body.amount) || 15;
+        let baseAmount = parseFloat(body.amount) || 15;
+        let discountAmount = 0;
+        let finalAmount = baseAmount;
         const currency = (body.currency || env.CURRENCY || "SAR").trim();
+
+        // Validate coupon if provided
+        if (couponCode && env.DB) {
+            const coupon = await env.DB.prepare(
+                "SELECT * FROM coupons WHERE UPPER(code) = ? AND status = 'active'"
+            ).bind(couponCode).first();
+
+            if (coupon) {
+                const now = Date.now();
+                const expOk = !coupon.expires_at || now <= new Date(coupon.expires_at).getTime();
+                const usesOk = coupon.max_uses <= 0 || coupon.used_count < coupon.max_uses;
+                const minOk = coupon.min_amount <= 0 || baseAmount >= coupon.min_amount;
+
+                if (expOk && usesOk && minOk) {
+                    if (coupon.discount_type === "percent") {
+                        discountAmount = (baseAmount * (coupon.discount_val / 100));
+                    } else {
+                        discountAmount = coupon.discount_val;
+                    }
+                    discountAmount = Math.min(discountAmount, baseAmount);
+                    finalAmount = Math.max(0, baseAmount - discountAmount);
+
+                    // Increment coupon use
+                    await env.DB.prepare("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?").bind(coupon.id).run();
+                }
+            }
+        }
 
         const orderId = "ORD-" + Math.random().toString(36).substring(2, 8).toUpperCase();
 
@@ -51,14 +119,21 @@ export async function onRequestPost(context) {
                 INSERT INTO orders (
                     order_id, customer_id, customer_name, customer_phone, customer_email,
                     plan_id, plan_name, duration_days, amount, currency,
-                    payment_method, trx_id, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+                    payment_method, trx_id, coupon_code, discount_amount, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
             `).bind(
                 orderId, customerId, customerName, customerPhone, finalEmail,
-                planId, planName, durationDays, amount, currency,
-                paymentMethod, trxId
+                planId, planName, durationDays, finalAmount, currency,
+                paymentMethod, trxId, couponCode || null, discountAmount
             ).run();
         }
+
+        // 🤖 Instant Telegram Alert Dispatch
+        await sendTelegramOrderAlert(env, {
+            orderId, customerName, customerPhone, finalEmail,
+            planName, durationDays, finalAmount, currency,
+            paymentMethod, trxId, couponCode, discountAmount
+        });
 
         return json({
             success: true,
@@ -69,7 +144,8 @@ export async function onRequestPost(context) {
                 customer_phone: customerPhone,
                 customer_email: finalEmail,
                 plan_name: planName,
-                amount: amount,
+                amount: finalAmount,
+                discount_amount: discountAmount,
                 currency: currency,
                 status: "pending"
             }
