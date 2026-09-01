@@ -485,6 +485,146 @@ function updateColorPickers(type) {
     }
 }
 
+// -------------------------------------------------------------
+// 🖼️ Logo & Favicon Client-Side Auto-Converter & Processors
+// -------------------------------------------------------------
+function handleLogoFileSelect(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+        alert("Please select a valid image file (.png, .jpg, .svg, .webp)");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+        const img = new Image();
+        img.onload = function() {
+            // Auto resize to max 320px width / 90px height
+            const maxW = 320;
+            const maxH = 90;
+            let targetW = img.width;
+            let targetH = img.height;
+
+            if (targetW > maxW || targetH > maxH) {
+                const ratio = Math.min(maxW / targetW, maxH / targetH);
+                targetW = Math.round(targetW * ratio);
+                targetH = Math.round(targetH * ratio);
+            }
+
+            const canvas = document.createElement("canvas");
+            canvas.width = targetW;
+            canvas.height = targetH;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, targetW, targetH);
+
+            // Compress to WebP (or PNG fallback)
+            let dataUrl = canvas.toDataURL("image/webp", 0.9);
+            if (!dataUrl || dataUrl.length > canvas.toDataURL("image/png").length) {
+                dataUrl = canvas.toDataURL("image/png");
+            }
+
+            document.getElementById("custom-sitelogo").value = dataUrl;
+            updateLogoPreview(dataUrl);
+        };
+        img.src = evt.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function updateLogoFromUrl(url) {
+    updateLogoPreview(url ? url.trim() : "");
+}
+
+function updateLogoPreview(url) {
+    const defaultSpan = document.getElementById("logo-preview-default");
+    const previewImg = document.getElementById("logo-preview-img");
+    const removeBtn = document.getElementById("btn-remove-logo");
+
+    if (url) {
+        previewImg.src = url;
+        previewImg.style.display = "block";
+        if (defaultSpan) defaultSpan.style.display = "none";
+        if (removeBtn) removeBtn.style.display = "block";
+    } else {
+        previewImg.src = "";
+        previewImg.style.display = "none";
+        if (defaultSpan) defaultSpan.style.display = "block";
+        if (removeBtn) removeBtn.style.display = "none";
+    }
+}
+
+function removeCustomLogo() {
+    document.getElementById("custom-sitelogo").value = "";
+    document.getElementById("logo-file-input").value = "";
+    updateLogoPreview("");
+}
+
+function handleFaviconFileSelect(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+        alert("Please select a valid image file");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+        const img = new Image();
+        img.onload = function() {
+            // Auto crop / square to 64x64 icon
+            const size = 64;
+            const canvas = document.createElement("canvas");
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext("2d");
+
+            // Center-crop to perfect square
+            const minDim = Math.min(img.width, img.height);
+            const startX = (img.width - minDim) / 2;
+            const startY = (img.height - minDim) / 2;
+
+            ctx.drawImage(img, startX, startY, minDim, minDim, 0, 0, size, size);
+            const dataUrl = canvas.toDataURL("image/png");
+
+            document.getElementById("custom-sitefavicon").value = dataUrl;
+            updateFaviconPreview(dataUrl);
+        };
+        img.src = evt.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function updateFaviconFromUrl(url) {
+    updateFaviconPreview(url ? url.trim() : "");
+}
+
+function updateFaviconPreview(url) {
+    const defaultSpan = document.getElementById("favicon-preview-default");
+    const previewImg = document.getElementById("favicon-preview-img");
+    const removeBtn = document.getElementById("btn-remove-favicon");
+
+    if (url) {
+        previewImg.src = url;
+        previewImg.style.display = "block";
+        if (defaultSpan) defaultSpan.style.display = "none";
+        if (removeBtn) removeBtn.style.display = "block";
+    } else {
+        previewImg.src = "";
+        previewImg.style.display = "none";
+        if (defaultSpan) defaultSpan.style.display = "block";
+        if (removeBtn) removeBtn.style.display = "none";
+    }
+}
+
+function removeCustomFavicon() {
+    document.getElementById("custom-sitefavicon").value = "";
+    document.getElementById("favicon-file-input").value = "";
+    updateFaviconPreview("");
+}
+
 async function handleSaveCustomizer(e) {
     if (e && e.preventDefault) e.preventDefault();
     const btn = document.getElementById("customizer-save-btn");
@@ -497,9 +637,11 @@ async function handleSaveCustomizer(e) {
         theme_accent: document.getElementById("custom-theme-accent-hex").value.trim(),
         theme_bg_mode: document.getElementById("custom-theme-bgmode").value,
         
-        // Brand & Identity
+        // Brand, Logo & Identity
         site_name: document.getElementById("custom-sitename").value.trim(),
         site_badge: document.getElementById("custom-sitebadge").value.trim(),
+        site_logo: document.getElementById("custom-sitelogo").value.trim(),
+        site_favicon: document.getElementById("custom-sitefavicon").value.trim(),
         tagline: document.getElementById("custom-tagline").value.trim(),
 
         // Hero Content
@@ -540,7 +682,7 @@ async function handleSaveCustomizer(e) {
         });
         const data = await res.json();
         if (data.success) {
-            alert("🎨 Store design, colors & custom texts saved live to your D1 Database!");
+            alert("🎨 Store design, logo & custom texts saved live to your D1 Database!");
             loadSettings();
         } else {
             alert("❌ Failed to save: " + data.error);
@@ -595,6 +737,20 @@ async function loadSettings() {
             if (s.site_name) document.getElementById("custom-sitename").value = s.site_name;
             if (s.site_badge) document.getElementById("custom-sitebadge").value = s.site_badge;
             if (s.tagline) document.getElementById("custom-tagline").value = s.tagline;
+
+            // Logo & Favicon
+            if (s.site_logo) {
+                document.getElementById("custom-sitelogo").value = s.site_logo;
+                updateLogoPreview(s.site_logo);
+            } else {
+                removeCustomLogo();
+            }
+            if (s.site_favicon) {
+                document.getElementById("custom-sitefavicon").value = s.site_favicon;
+                updateFaviconPreview(s.site_favicon);
+            } else {
+                removeCustomFavicon();
+            }
 
             if (s.hero_pill_text) document.getElementById("custom-heropill").value = s.hero_pill_text;
             if (s.hero_title_line1) document.getElementById("custom-herotitle1").value = s.hero_title_line1;
