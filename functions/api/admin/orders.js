@@ -122,6 +122,20 @@ export async function onRequestPost(context) {
                 WHERE order_id = ?
             `).bind(clientId, dnsUrl, expireDate, order_id).run();
 
+            // Send automated customer email if email is present
+            if (order.customer_email) {
+                try {
+                    await sendOrderApprovedEmail(env, order.customer_email, order.customer_name, {
+                        clientId,
+                        dnsUrl,
+                        durationDays: order.duration_days,
+                        expireDate
+                    });
+                } catch (err) {
+                    console.error("Failed to send order approval email:", err);
+                }
+            }
+
             const waMessage = clientData.whatsapp_share_text || clientData.whatsapp_message || (
                 `🎉 *DNS ACTIVATION COMPLETED* 🎉\n\n` +
                 `👤 *Username / PIN:* \`${clientId}\`\n` +
@@ -131,21 +145,6 @@ export async function onRequestPost(context) {
                 `🍏 *iOS 1-Click Profile:* ${clientData.ios_profile_url || `https://dnshub.pages.dev/api/public/ios-profile?username=${clientId}`}\n\n` +
                 `🔥 Ultra-Fast Ad-Free Private DNS is now active for your device!`
             );
-
-            // Automated Email Dispatch to customer
-            if (order.customer_email) {
-                try {
-                    await sendOrderApprovedEmail(env, order.customer_email, order.customer_name, {
-                        order_id: order.order_id,
-                        plan_name: order.plan_name,
-                        client_id: clientId,
-                        dns_url: dnsUrl,
-                        expire_date: expireDate
-                    });
-                } catch (emailErr) {
-                    console.error("Email dispatch failed on approval:", emailErr);
-                }
-            }
 
             return json({
                 success: true,

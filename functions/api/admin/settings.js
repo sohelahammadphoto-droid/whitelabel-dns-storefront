@@ -100,54 +100,78 @@ export async function onRequestGet(context) {
         testimonials_title: s.testimonials_title || "What Our Customers Say",
         testimonials_subtitle: s.testimonials_subtitle || "Real feedback from verified active subscribers",
         testimonials: s.testimonials || [
-            { name: "Ahmed K.", role: "Riyadh, KSA", rating: 5, text: "Ultra-fast response for STC Pay and Al Rajhi Bank. Never fails!" },
-            { name: "Siddiqur R.", role: "Jeddah, KSA", rating: 5, text: "Excellent VoIP clarity for international calls. Best DNS service." },
-            { name: "Faisal M.", role: "Dammam, KSA", rating: 5, text: "Instant activation right after submitting TrxID. 100% recommended." }
+            { name: "Ahmed K.", role: "Saudi Arabia", rating: 5, text: "bKash and CityTouch work instantly without any lag. Super smooth and high speed!" },
+            { name: "Rafiqul Islam", role: "Dubai, UAE", rating: 5, text: "Best private DNS for overseas. WhatsApp and voice calls are crystal clear." },
+            { name: "Tanvir H.", role: "Qatar", rating: 5, text: "Instant activation. Highly recommended for banking and zero-disconnect connection." }
         ],
 
-        // --- 11. Interactive FAQ Section ---
+        // --- 11. FAQ Accordion Section ---
         faq_title: s.faq_title || "Frequently Asked Questions",
         faq_subtitle: s.faq_subtitle || "Everything you need to know about our Private DNS service",
         faqs: s.faqs || [
-            { q: "Do I need to install any 3rd-party VPN app?", a: "No! Our Private DNS connects directly into Android's native Private DNS settings or iOS DNS profile. Zero battery drain and zero app overhead." },
-            { q: "How long does activation take after payment?", a: "Instant to within 5 minutes. As soon as you enter your Transaction ID (TrxID), your private DNS hostname is assigned and activated." },
-            { q: "Which banking and VoIP apps are supported?", a: "All standard mobile banking apps (bKash, Nagad, Upay, Citytouch, Al Rajhi, STC Pay, Urpay) and VoIP protocols (WhatsApp, Imo, BOTIM, Zangi)." }
+            { q: "Do I need to install any VPN app?", a: "No app required! You just paste the private DNS hostname in your phone's native Android or iOS settings." },
+            { q: "How long does activation take?", a: "Activation takes less than 2 minutes after your payment transaction is verified by our system." },
+            { q: "Will this slow down my internet speed?", a: "Not at all. Private DNS operates at the protocol level without heavy encryption tunnel overhead, giving you 100% native speed." },
+            { q: "Can I use it on both Android and iPhone?", a: "Yes! We support native Android Private DNS (DoT) and iOS signed configuration profiles." }
         ],
 
-        // --- 12. Custom HTML / Marketing Section ---
+        // --- 12. Custom HTML / Marketing Block ---
         custom_html: s.custom_html || "",
 
         // --- 13. Custom CSS & JS Injector ---
         custom_css: s.custom_css || "",
         custom_js: s.custom_js || "",
 
-        // --- 14. Floating Support Widget ---
-        floating_support_enabled: s.floating_support_enabled !== undefined ? Boolean(s.floating_support_enabled) : true,
+        // --- 14. Floating Support & Links ---
         support_whatsapp: s.support_whatsapp || env.SUPPORT_WHATSAPP || "",
-        support_telegram: s.support_telegram || env.SUPPORT_TELEGRAM || "",
         support_whatsapp_msg: s.support_whatsapp_msg || "Hello, I need assistance with Private DNS",
+        support_telegram: s.support_telegram || env.SUPPORT_TELEGRAM || "",
+        floating_support_enabled: s.floating_support_enabled !== undefined ? Boolean(s.floating_support_enabled) : true,
 
-        // --- 15. Telegram Instant Alerts ---
-        telegram_bot_token: s.telegram_bot_token || env.TELEGRAM_BOT_TOKEN || "",
-        telegram_chat_id: s.telegram_chat_id || env.TELEGRAM_CHAT_ID || "",
+        // --- 15. Telegram Bot Order Alerts ---
+        telegram_bot_token: s.telegram_bot_token || "",
+        telegram_chat_id: s.telegram_chat_id || "",
+        telegram_alerts_enabled: s.telegram_alerts_enabled !== undefined ? Boolean(s.telegram_alerts_enabled) : false,
 
-        // --- 16. Core Reseller API & Security ---
-        reseller_api_key: s.reseller_api_key || env.RESELLER_API_KEY || "",
+        // --- 16. Reseller API & Main Platform ---
         main_api_url: s.main_api_url || env.MAIN_API_URL || "https://dnshub.pages.dev",
-        turnstile_site_key: s.turnstile_site_key || env.TURNSTILE_SITE_KEY || "",
-        turnstile_secret_key: s.turnstile_secret_key || env.TURNSTILE_SECRET_KEY || "",
+        reseller_api_key: s.reseller_api_key || env.RESELLER_API_KEY || "",
 
         // --- 17. Email & OTP Verification ---
-        email_provider: s.email_provider || env.EMAIL_PROVIDER || "none",
-        brevo_api_key: s.brevo_api_key || env.BREVO_API_KEY || "",
-        brevo_sender_email: s.brevo_sender_email || env.BREVO_SENDER_EMAIL || "",
-        brevo_sender_name: s.brevo_sender_name || env.BREVO_SENDER_NAME || "UltraDNS Security"
+        email_provider: s.email_provider || "none", // none, brevo, gmail_smtp
+        brevo_api_key: s.brevo_api_key || "",
+        brevo_sender_email: s.brevo_sender_email || "",
+        brevo_sender_name: s.brevo_sender_name || (s.site_name || "UltraDNS Pro"),
+        smtp_gmail_email: s.smtp_gmail_email || "",
+        smtp_gmail_app_password: s.smtp_gmail_app_password || "",
+        smtp_sender_name: s.smtp_sender_name || (s.site_name || "UltraDNS Pro"),
+
+        // --- 18. Anti-Bot Security ---
+        turnstile_site_key: s.turnstile_site_key || "",
+        turnstile_secret_key: s.turnstile_secret_key || "",
+
+        // --- 19. Payment Methods ---
+        payment_methods: s.payment_methods || [
+            { id: "stcpay", name: "STC Pay", number: "0501234567", account_name: "Personal", instructions: "Send to this STC Pay number & copy TrxID." },
+            { id: "urpay", name: "Urpay", number: "0501234567", account_name: "Personal", instructions: "Send via Urpay & copy TrxID." },
+            { id: "bkash", name: "bKash (Send Money)", number: "01700000000", account_name: "Personal", instructions: "Send Money to bKash & copy TrxID." }
+        ],
+
+        // --- 20. Plans ---
+        plans: s.plans || [
+            { id: "1m", name: "1 Month Pass", duration_days: 30, price: 15, popular: false, features: ["30 Days Validity", "All Banking Apps Supported", "Zero Speed Drop", "Dedicated Support"] },
+            { id: "3m", name: "3 Months Saver", duration_days: 90, price: 40, popular: true, badge: "MOST POPULAR", features: ["90 Days Validity", "Priority High-Speed Server", "All VoIP & Banking Apps", "24/7 Priority Support"] },
+            { id: "1y", name: "1 Year VIP Access", duration_days: 365, price: 130, popular: false, badge: "BEST VALUE", features: ["365 Days Uninterrupted", "VIP Dedicated Routing", "All Apps & HD VoIP", "Lifetime Replacement Guarantee"] }
+        ]
     };
 
-    return json({ success: true, data });
+    return json({
+        success: true,
+        data: data
+    });
 }
 
-// POST: Save all store settings & customizer changes
+// POST: Update store settings & design tokens
 export async function onRequestPost(context) {
     const { request, env } = context;
     if (!await verifyAuth(request, env)) {
@@ -158,83 +182,27 @@ export async function onRequestPost(context) {
     try {
         const body = await request.json();
 
-        // 1. Branding & Identity
-        if (body.site_name !== undefined) await setSetting(env, "site_name", body.site_name);
-        if (body.site_badge !== undefined) await setSetting(env, "site_badge", body.site_badge);
-        if (body.site_logo !== undefined) await setSetting(env, "site_logo", body.site_logo);
-        if (body.site_favicon !== undefined) await setSetting(env, "site_favicon", body.site_favicon);
-        if (body.owner_name !== undefined) await setSetting(env, "owner_name", body.owner_name);
-        if (body.tagline !== undefined) await setSetting(env, "tagline", body.tagline);
-        if (body.currency !== undefined) await setSetting(env, "currency", body.currency);
-        if (body.currency_symbol !== undefined) await setSetting(env, "currency_symbol", body.currency_symbol);
-        if (body.currencies !== undefined) await setSetting(env, "currencies", body.currencies);
-
-        // 2. Themes & Colors
-        if (body.theme_preset !== undefined) await setSetting(env, "theme_preset", body.theme_preset);
-        if (body.theme_primary !== undefined) await setSetting(env, "theme_primary", body.theme_primary);
-        if (body.theme_primary_hover !== undefined) await setSetting(env, "theme_primary_hover", body.theme_primary_hover);
-        if (body.theme_accent !== undefined) await setSetting(env, "theme_accent", body.theme_accent);
-        if (body.theme_bg_mode !== undefined) await setSetting(env, "theme_bg_mode", body.theme_bg_mode);
-
-        // 3. Section Visibility Toggles (Page Builder)
-        if (body.show_notice !== undefined) await setSetting(env, "show_notice", Boolean(body.show_notice));
-        if (body.show_hero !== undefined) await setSetting(env, "show_hero", Boolean(body.show_hero));
-        if (body.show_stats !== undefined) await setSetting(env, "show_stats", Boolean(body.show_stats));
-        if (body.show_features !== undefined) await setSetting(env, "show_features", Boolean(body.show_features));
-        if (body.show_pricing !== undefined) await setSetting(env, "show_pricing", Boolean(body.show_pricing));
-        if (body.show_checker !== undefined) await setSetting(env, "show_checker", Boolean(body.show_checker));
-        if (body.show_testimonials !== undefined) await setSetting(env, "show_testimonials", Boolean(body.show_testimonials));
-        if (body.show_faq !== undefined) await setSetting(env, "show_faq", Boolean(body.show_faq));
-        if (body.show_guide !== undefined) await setSetting(env, "show_guide", Boolean(body.show_guide));
-        if (body.show_custom_html !== undefined) await setSetting(env, "show_custom_html", Boolean(body.show_custom_html));
-
-        // 4. Hero Content & Notice
-        if (body.notice !== undefined) await setSetting(env, "notice", body.notice);
-        if (body.hero_pill_text !== undefined) await setSetting(env, "hero_pill_text", body.hero_pill_text);
-        if (body.hero_title_line1 !== undefined) await setSetting(env, "hero_title_line1", body.hero_title_line1);
-        if (body.hero_title_line2 !== undefined) await setSetting(env, "hero_title_line2", body.hero_title_line2);
-        if (body.hero_subtitle !== undefined) await setSetting(env, "hero_subtitle", body.hero_subtitle);
-        if (body.btn_hero_buy_text !== undefined) await setSetting(env, "btn_hero_buy_text", body.btn_hero_buy_text);
-        if (body.btn_hero_check_text !== undefined) await setSetting(env, "btn_hero_check_text", body.btn_hero_check_text);
-
-        // 5. Dynamic Lists & Custom Blocks
-        if (body.stats !== undefined) await setSetting(env, "stats", body.stats);
-        if (body.faqs !== undefined) await setSetting(env, "faqs", body.faqs);
-        if (body.testimonials !== undefined) await setSetting(env, "testimonials", body.testimonials);
-        if (body.custom_html !== undefined) await setSetting(env, "custom_html", body.custom_html);
-        if (body.custom_css !== undefined) await setSetting(env, "custom_css", body.custom_css);
-        if (body.custom_js !== undefined) await setSetting(env, "custom_js", body.custom_js);
-
-        // 6. Socials & Support
-        if (body.support_whatsapp !== undefined) await setSetting(env, "support_whatsapp", body.support_whatsapp);
-        if (body.support_telegram !== undefined) await setSetting(env, "support_telegram", body.support_telegram);
-        if (body.support_whatsapp_msg !== undefined) await setSetting(env, "support_whatsapp_msg", body.support_whatsapp_msg);
-        if (body.floating_support_enabled !== undefined) await setSetting(env, "floating_support_enabled", Boolean(body.floating_support_enabled));
-
-        // 7. Telegram Alerts
-        if (body.telegram_bot_token !== undefined) await setSetting(env, "telegram_bot_token", body.telegram_bot_token);
-        if (body.telegram_chat_id !== undefined) await setSetting(env, "telegram_chat_id", body.telegram_chat_id);
-
-        // 8. Core API & Security
-        if (body.reseller_api_key !== undefined) await setSetting(env, "reseller_api_key", body.reseller_api_key);
-        if (body.main_api_url !== undefined) await setSetting(env, "main_api_url", body.main_api_url);
-        if (body.turnstile_site_key !== undefined) await setSetting(env, "turnstile_site_key", body.turnstile_site_key);
-        if (body.turnstile_secret_key !== undefined) await setSetting(env, "turnstile_secret_key", body.turnstile_secret_key);
-
-        // 9. Admin Password Change
-        if (body.new_password && body.new_password.trim()) {
-            await setSetting(env, "admin_password", body.new_password.trim());
+        if (!env.DB) {
+            return json({ success: false, error: "D1 Database not configured" }, 500);
         }
 
-        // 10. Email & OTP Verification
-        if (body.email_provider !== undefined) await setSetting(env, "email_provider", body.email_provider);
-        if (body.brevo_api_key !== undefined) await setSetting(env, "brevo_api_key", body.brevo_api_key);
-        if (body.brevo_sender_email !== undefined) await setSetting(env, "brevo_sender_email", body.brevo_sender_email);
-        if (body.brevo_sender_name !== undefined) await setSetting(env, "brevo_sender_name", body.brevo_sender_name);
+        // Save each field into D1
+        for (const [key, val] of Object.entries(body)) {
+            // If updating new admin password
+            if (key === "new_password") {
+                if (val && String(val).trim()) {
+                    await setSetting(env, "admin_password", String(val).trim());
+                }
+                continue;
+            }
+            await setSetting(env, key, val);
+        }
 
-        return json({ success: true, message: "Settings saved successfully!" });
+        return json({
+            success: true,
+            message: "Settings saved successfully to database!"
+        });
     } catch (e) {
-        console.error("Settings save error:", e);
         return json({ success: false, error: e.message }, 500);
     }
 }

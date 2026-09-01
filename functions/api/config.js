@@ -30,16 +30,16 @@ export async function onRequestGet(context) {
         ],
 
         // --- 2. Theme & Color Tokens ---
-        theme_preset: s.theme_preset || "cyber",
+        theme_preset: s.theme_preset || "cyber", // cyber, amoled, navy, slate, sunset, violet, emerald
         theme_primary: s.theme_primary || "#6366f1", // Primary Brand
         theme_primary_hover: s.theme_primary_hover || "#4f46e5",
-        theme_accent: s.theme_accent || "#06b6d4",   // Cyan / Secondary Accent
-        theme_accent_emerald: s.theme_accent_emerald || "#10b981", // Success / Badges
-        theme_bg_mode: s.theme_bg_mode || "cyber",   // cyber, amoled, navy, slate
+        theme_accent: s.theme_accent || "#06b6d4",   // Secondary Accent
+        theme_accent_emerald: s.theme_accent_emerald || "#10b981",
+        theme_bg_mode: s.theme_bg_mode || "cyber",   // cyber, amoled, navy, slate, sunset, violet, emerald
         theme_card_bg: s.theme_card_bg || "rgba(18, 26, 43, 0.75)",
         theme_border_glow: s.theme_border_glow || "rgba(99, 102, 241, 0.3)",
 
-        // --- 3. Section Visibility Controls (Page Builder) ---
+        // --- 3. Section Visibility Controls (Page Builder Lite) ---
         show_notice: s.show_notice !== undefined ? Boolean(s.show_notice) : (s.notice_enabled !== undefined ? Boolean(s.notice_enabled) : true),
         show_hero: s.show_hero !== undefined ? Boolean(s.show_hero) : true,
         show_stats: s.show_stats !== undefined ? Boolean(s.show_stats) : true,
@@ -63,7 +63,7 @@ export async function onRequestGet(context) {
         btn_hero_buy_text: s.btn_hero_buy_text || "🚀 Get Private DNS Now",
         btn_hero_check_text: s.btn_hero_check_text || "🔍 Check Existing PIN",
 
-        // --- 6. Live Stats Section ---
+        // --- 6. Live Stats Counter Section ---
         stats: s.stats || [
             { value: "99.9%", label: "Server Uptime", icon: "⚡" },
             { value: "5,000+", label: "Active Connections", icon: "👥" },
@@ -92,22 +92,23 @@ export async function onRequestGet(context) {
         checker_input_placeholder: s.checker_input_placeholder || "e.g. 0501234567 or u123456",
         btn_checker_text: s.btn_checker_text || "Check Status",
 
-        // --- 10. Testimonials / Reviews ---
+        // --- 10. Customer Reviews & Testimonials Section ---
         testimonials_title: s.testimonials_title || "What Our Customers Say",
         testimonials_subtitle: s.testimonials_subtitle || "Real feedback from verified active subscribers",
         testimonials: s.testimonials || [
-            { name: "Ahmed K.", role: "Riyadh, KSA", rating: 5, text: "Ultra-fast response for STC Pay and Al Rajhi Bank. Never fails!" },
-            { name: "Siddiqur R.", role: "Jeddah, KSA", rating: 5, text: "Excellent VoIP clarity for international calls. Best DNS service." },
-            { name: "Faisal M.", role: "Dammam, KSA", rating: 5, text: "Instant activation right after submitting TrxID. 100% recommended." }
+            { name: "Ahmed K.", role: "Saudi Arabia", rating: 5, text: "bKash and CityTouch work instantly without any lag. Super smooth and high speed!" },
+            { name: "Rafiqul Islam", role: "Dubai, UAE", rating: 5, text: "Best private DNS for overseas. WhatsApp and voice calls are crystal clear." },
+            { name: "Tanvir H.", role: "Qatar", rating: 5, text: "Instant activation. Highly recommended for banking and zero-disconnect connection." }
         ],
 
-        // --- 11. Interactive FAQs ---
+        // --- 11. FAQ Accordion Section ---
         faq_title: s.faq_title || "Frequently Asked Questions",
         faq_subtitle: s.faq_subtitle || "Everything you need to know about our Private DNS service",
         faqs: s.faqs || [
-            { q: "Do I need to install any 3rd-party VPN app?", a: "No! Our Private DNS connects directly into Android's native Private DNS settings or iOS DNS profile. Zero battery drain and zero app overhead." },
-            { q: "How long does activation take after payment?", a: "Instant to within 5 minutes. As soon as you enter your Transaction ID (TrxID), your private DNS hostname is assigned and activated." },
-            { q: "Which banking and VoIP apps are supported?", a: "All standard mobile banking apps (bKash, Nagad, Upay, Citytouch, Al Rajhi, STC Pay, Urpay) and VoIP protocols (WhatsApp, Imo, BOTIM, Zangi)." }
+            { q: "Do I need to install any VPN app?", a: "No app required! You just paste the private DNS hostname in your phone's native Android or iOS settings." },
+            { q: "How long does activation take?", a: "Activation takes less than 2 minutes after your payment transaction is verified by our system." },
+            { q: "Will this slow down my internet speed?", a: "Not at all. Private DNS operates at the protocol level without heavy encryption tunnel overhead, giving you 100% native speed." },
+            { q: "Can I use it on both Android and iPhone?", a: "Yes! We support native Android Private DNS (DoT) and iOS signed configuration profiles." }
         ],
 
         // --- 12. Custom HTML / Marketing Block ---

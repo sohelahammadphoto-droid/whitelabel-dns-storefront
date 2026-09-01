@@ -14,6 +14,7 @@ export async function onRequestPost(context) {
 
     try {
         const body = await request.json();
+        const username = (body.username || "").trim().toLowerCase();
         const phone = (body.phone || "").trim();
         const durationDays = parseInt(body.duration_days, 10) || 30;
         const note = (body.note || "Direct Store Admin Creation").trim();

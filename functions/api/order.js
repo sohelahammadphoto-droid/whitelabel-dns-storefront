@@ -99,7 +99,7 @@ export async function onRequestPost(context) {
 
                 if (expOk && usesOk && minOk) {
                     if (coupon.discount_type === "percent") {
-                        discountAmount = (baseAmount * (coupon.discount_val / 100));
+                        discountAmount = (baseAmount * coupon.discount_val) / 100;
                     } else {
                         discountAmount = coupon.discount_val;
                     }
@@ -107,7 +107,9 @@ export async function onRequestPost(context) {
                     finalAmount = Math.max(0, baseAmount - discountAmount);
 
                     // Increment coupon use
-                    await env.DB.prepare("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?").bind(coupon.id).run();
+                    await env.DB.prepare(
+                        "UPDATE coupons SET used_count = used_count + 1 WHERE id = ?"
+                    ).bind(coupon.id).run();
                 }
             }
         }
@@ -119,20 +121,19 @@ export async function onRequestPost(context) {
                 INSERT INTO orders (
                     order_id, customer_id, customer_name, customer_phone, customer_email,
                     plan_id, plan_name, duration_days, amount, currency,
-                    payment_method, trx_id, coupon_code, discount_amount, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+                    payment_method, trx_id, status, admin_note
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
             `).bind(
                 orderId, customerId, customerName, customerPhone, finalEmail,
                 planId, planName, durationDays, finalAmount, currency,
-                paymentMethod, trxId, couponCode || null, discountAmount
+                paymentMethod, trxId, couponCode ? `Coupon applied: ${couponCode}` : null
             ).run();
         }
 
-        // 🤖 Instant Telegram Alert Dispatch
-        await sendTelegramOrderAlert(env, {
-            orderId, customerName, customerPhone, finalEmail,
-            planName, durationDays, finalAmount, currency,
-            paymentMethod, trxId, couponCode, discountAmount
+        // Fire background Telegram notification
+        sendTelegramOrderAlert(env, {
+            orderId, customerName, customerPhone, finalEmail, planName, durationDays,
+            finalAmount, currency, paymentMethod, trxId, couponCode, discountAmount
         });
 
         return json({
@@ -145,7 +146,7 @@ export async function onRequestPost(context) {
                 customer_email: finalEmail,
                 plan_name: planName,
                 amount: finalAmount,
-                discount_amount: discountAmount,
+                discount: discountAmount,
                 currency: currency,
                 status: "pending"
             }

@@ -178,7 +178,8 @@ function handleCurrencyChange(newCurr) {
 function renderConfig() {
     if (!siteConfig) return;
 
-    // --- 1. Section Visibility Toggles (WordPress-Style Section Controller) ---\n    toggleSection("notice-bar-wrap", siteConfig.show_notice);
+    // --- 1. Section Visibility Toggles (WordPress-Style Section Controller) ---
+    toggleSection("notice-bar-wrap", siteConfig.show_notice);
     toggleSection("hero-section", siteConfig.show_hero);
     toggleSection("stats-section", siteConfig.show_stats);
     toggleSection("features-section", siteConfig.show_features);
@@ -577,36 +578,30 @@ async function handleCustomerLogin(e) {
     const payload = {
         ...antiBot,
         email: document.getElementById("login-email").value.trim(),
-        password: document.getElementById("login-password").value.trim()
+        password: document.getElementById("login-password").value
     };
 
     try {
-        const res = await fetch("/api/customer/login", {
+        const res = await fetch("/api/auth/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
-        const json = await res.json();
+        const data = await res.json();
 
-        if (json.success) {
-            customerToken = json.token;
-            customerUser = json.customer;
+        if (data.success) {
+            customerToken = data.token;
+            customerUser = data.user;
             localStorage.setItem("customer_token", customerToken);
             localStorage.setItem("customer_user", JSON.stringify(customerUser));
-            
             closeAuthModal();
             renderNavbarAuth();
             openUserModal();
-        } else if (json.unverified) {
-            pendingOtpEmail = payload.email;
-            document.getElementById("otp-display-email").textContent = pendingOtpEmail;
-            switchAuthTab('otp');
-            startResendTimer();
         } else {
-            alert("❌ " + (json.error || "Login failed"));
+            alert("❌ " + (data.error || "Login failed"));
         }
     } catch (err) {
-        alert("Login error: " + err.message);
+        alert("Error: " + err.message);
     } finally {
         btn.disabled = false;
         btn.textContent = "Sign In to Account";
@@ -625,26 +620,26 @@ async function handleCustomerRegister(e) {
         name: document.getElementById("reg-name").value.trim(),
         email: document.getElementById("reg-email").value.trim(),
         phone: document.getElementById("reg-phone").value.trim(),
-        password: document.getElementById("reg-password").value.trim()
+        password: document.getElementById("reg-password").value
     };
 
     try {
-        const res = await fetch("/api/customer/register", {
+        const res = await fetch("/api/auth/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
-        const json = await res.json();
+        const data = await res.json();
 
-        if (json.success) {
-            if (json.requires_otp) {
+        if (data.success) {
+            if (data.requireOtp) {
                 pendingOtpEmail = payload.email;
                 document.getElementById("otp-display-email").textContent = pendingOtpEmail;
                 switchAuthTab('otp');
-                startResendTimer();
+                startResendCountdown();
             } else {
-                customerToken = json.token;
-                customerUser = json.customer;
+                customerToken = data.token;
+                customerUser = data.user;
                 localStorage.setItem("customer_token", customerToken);
                 localStorage.setItem("customer_user", JSON.stringify(customerUser));
                 closeAuthModal();
@@ -652,10 +647,10 @@ async function handleCustomerRegister(e) {
                 openUserModal();
             }
         } else {
-            alert("❌ " + (json.error || "Registration failed"));
+            alert("❌ " + (data.error || "Registration failed"));
         }
     } catch (err) {
-        alert("Registration error: " + err.message);
+        alert("Error: " + err.message);
     } finally {
         btn.disabled = false;
         btn.textContent = "✨ Create Account";
@@ -665,79 +660,52 @@ async function handleCustomerRegister(e) {
 async function handleVerifyOtp(e) {
     e.preventDefault();
     const btn = document.getElementById("otp-submit-btn");
+    const code = document.getElementById("otp-input-code").value.trim();
+
     btn.disabled = true;
     btn.textContent = "Verifying...";
 
-    const code = document.getElementById("otp-input-code").value.trim();
-
     try {
-        const res = await fetch("/api/customer/verify-otp", {
+        const res = await fetch("/api/auth/verify-otp", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: pendingOtpEmail, code: code })
+            body: JSON.stringify({ email: pendingOtpEmail, otp: code })
         });
-        const json = await res.json();
+        const data = await res.json();
 
-        if (json.success) {
-            customerToken = json.token;
-            customerUser = json.customer;
+        if (data.success) {
+            customerToken = data.token;
+            customerUser = data.user;
             localStorage.setItem("customer_token", customerToken);
             localStorage.setItem("customer_user", JSON.stringify(customerUser));
-
-            alert("🎉 Account verified successfully!");
             closeAuthModal();
             renderNavbarAuth();
             openUserModal();
         } else {
-            alert("❌ " + (json.error || "Invalid code"));
+            alert("❌ " + (data.error || "Invalid OTP code"));
         }
     } catch (err) {
-        alert("Verification error: " + err.message);
+        alert("Error: " + err.message);
     } finally {
         btn.disabled = false;
         btn.textContent = "✓ Verify & Activate Account";
     }
 }
 
-async function handleResendOtp() {
-    const btn = document.getElementById("otp-resend-btn");
-    btn.disabled = true;
-    btn.textContent = "Sending...";
-
-    try {
-        const res = await fetch("/api/customer/resend-otp", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: pendingOtpEmail })
-        });
-        const json = await res.json();
-        if (json.success) {
-            alert("✉️ A new 6-digit code has been sent to your Gmail.");
-            startResendTimer();
-        } else {
-            alert("❌ " + (json.error || "Failed to resend"));
-            btn.disabled = false;
-            btn.textContent = "Resend Code";
-        }
-    } catch (err) {
-        alert("Error: " + err.message);
-        btn.disabled = false;
-        btn.textContent = "Resend Code";
-    }
-}
-
-function startResendTimer() {
-    let timeLeft = 60;
+function startResendCountdown() {
+    let seconds = 60;
     const btn = document.getElementById("otp-resend-btn");
     if (!btn) return;
-    
     btn.disabled = true;
+    btn.textContent = `Resend in ${seconds}s`;
+
     if (resendTimer) clearInterval(resendTimer);
 
     resendTimer = setInterval(() => {
-        btn.textContent = `Resend in ${timeLeft}s`;
-        timeLeft--;
-        if (timeLeft < 0) {
+        seconds--;
+        if (seconds > 0) {
+            btn.textContent = `Resend in ${seconds}s`;
+        } else {
             clearInterval(resendTimer);
             btn.disabled = false;
             btn.textContent = "Resend Code";
@@ -746,30 +714,29 @@ function startResendTimer() {
 }
 
 function handleCustomerLogout() {
-    customerToken = "";
-    customerUser = null;
     localStorage.removeItem("customer_token");
     localStorage.removeItem("customer_user");
+    customerToken = "";
+    customerUser = null;
     closeUserModal();
     renderNavbarAuth();
+    alert("You have logged out.");
 }
 
+// ----------------------------------------------------
+// Customer Account Dashboard & Active DNS Fetching
+// ----------------------------------------------------
 async function openUserModal() {
     if (!customerToken) {
-        openAuthModal();
-        return;
+        return openAuthModal();
     }
-
     const modal = document.getElementById("user-modal");
     if (modal) modal.style.display = "flex";
 
-    if (customerUser) {
-        const nameEl = document.getElementById("user-display-name");
-        const emailEl = document.getElementById("user-display-email");
-        if (nameEl) nameEl.textContent = customerUser.name;
-        if (emailEl) emailEl.textContent = customerUser.email;
-    }
-
+    const nameEl = document.getElementById("user-display-name");
+    const emailEl = document.getElementById("user-display-email");
+    if (nameEl) nameEl.textContent = customerUser ? customerUser.name : "My Account";
+    if (emailEl) emailEl.textContent = customerUser ? customerUser.email : "";
     fetchCustomerData();
 }
 
@@ -779,120 +746,252 @@ function closeUserModal() {
 }
 
 async function fetchCustomerData() {
-    if (!customerToken) return;
-
     try {
-        const res = await fetch("/api/customer/me", {
+        const res = await fetch("/api/user/me", {
             headers: { "Authorization": `Bearer ${customerToken}` }
         });
-        const json = await res.json();
+        const data = await res.json();
 
-        if (json.success && json.customer) {
-            customerUser = json.customer;
-            localStorage.setItem("customer_user", JSON.stringify(customerUser));
-
-            // Render Active Services
-            const activeContainer = document.getElementById("user-active-services");
-            const activeList = json.active_services || [];
-
-            if (activeContainer) {
-                if (activeList.length === 0) {
-                    activeContainer.innerHTML = `
-                        <div style="background: rgba(255,255,255,0.03); border: 1px dashed var(--border-color); border-radius: 8px; padding: 18px; text-align: center; color: var(--text-muted); font-size: 13px;">
-                            No active DNS subscriptions found under this email. Choose a plan below to connect!
-                        </div>
-                    `;
-                } else {
-                    activeContainer.innerHTML = activeList.map(s => `
-                        <div class="user-service-card">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                                <div>
-                                    <span style="font-size: 14px; font-weight: 800; color: #fff;">${s.plan_name}</span>
-                                    <div style="font-size: 11px; color: var(--text-muted);">PIN: <b style="color: #38bdf8;">${s.client_id}</b></div>
-                                </div>
-                                <span class="badge badge-approved">Active</span>
-                            </div>
-                            <div class="dns-copy-box">
-                                <span class="dns-hostname-val">${s.dns_url}</span>
-                                <button type="button" class="copy-btn" onclick="navigator.clipboard.writeText('${s.dns_url}').then(() => alert('Copied DNS: ${s.dns_url}'))">Copy Host</button>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 12px; color: var(--text-muted);">
-                                <span>Expires: <b style="color: #cbd5e1;">${s.expire_date || 'Active'}</b></span>
-                                <a href="/api/invoice?id=${s.order_id}" target="_blank" style="color: #38bdf8; font-weight: 700; text-decoration: none;">🧾 View Receipt ↗</a>
-                            </div>
-                        </div>
-                    `).join('');
-                }
+        if (!data.success) {
+            if (res.status === 401) {
+                handleCustomerLogout();
             }
-
-            // Render Orders History
-            const ordersContainer = document.getElementById("user-order-history");
-            const orderList = json.orders || [];
-
-            if (ordersContainer) {
-                if (orderList.length === 0) {
-                    ordersContainer.innerHTML = `<div style="color: var(--text-muted); font-size: 12px; padding: 10px 0;">No past orders.</div>`;
-                } else {
-                    ordersContainer.innerHTML = orderList.map(o => `
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--border-color); font-size: 13px;">
-                            <div>
-                                <b style="color: #fff;">${o.plan_name}</b>
-                                <div style="font-size: 11px; color: var(--text-muted);">${o.order_id} • ${o.created_at || ''}</div>
-                            </div>
-                            <div style="text-align: right;">
-                                <div style="font-weight: 700; color: #34d399;">${o.amount} ${o.currency || 'SAR'}</div>
-                                <span class="badge badge-${o.status}" style="font-size: 10px; padding: 2px 6px;">${o.status}</span>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-            }
-        } else if (res.status === 401) {
-            handleCustomerLogout();
+            return;
         }
+
+        renderUserActiveDns(data.active_dns);
+        renderUserOrderHistory(data.orders);
     } catch (e) {
-        console.error("Me fetch error:", e);
+        console.error("Failed to load customer profile:", e);
     }
 }
 
+function renderUserActiveDns(activeDnsList) {
+    const container = document.getElementById("user-active-services");
+    if (!container) return;
+
+    if (!activeDnsList || activeDnsList.length === 0) {
+        container.innerHTML = `
+            <div style="background: rgba(0,0,0,0.2); border: 1px dashed var(--border-color); border-radius: 8px; padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px;">
+                No active Private DNS subscription found.<br>Choose a plan below to activate instant DNS access.
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = activeDnsList.map(dns => `
+        <div class="active-dns-card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #38bdf8;">${dns.plan_name}</span>
+                    <h4 style="font-size: 16px; color: #fff; margin: 4px 0;">DNS Host: <code style="color: #38bdf8; font-size: 14px; word-break: break-all;">${dns.dns_url}</code></h4>
+                    <span style="font-size: 12px; color: var(--text-muted);">PIN: <b style="color:#fff;">${dns.client_id}</b> | Expires: <b>${dns.expire_date || 'Active'}</b></span>
+                </div>
+                <span class="badge badge-approved">ACTIVE</span>
+            </div>
+
+            <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="navigator.clipboard.writeText('${dns.dns_url}').then(() => alert('Copied DNS Hostname: ${dns.dns_url}'))">
+                    📋 Copy Hostname
+                </button>
+                <button class="btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="downloadIosProfile('${dns.client_id}', '${dns.dns_url}')">
+                    🍏 iOS Profile
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderUserOrderHistory(orders) {
+    const container = document.getElementById("user-order-history");
+    if (!container) return;
+
+    if (!orders || orders.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 15px; font-size: 13px;">No orders found</div>`;
+        return;
+    }
+
+    container.innerHTML = orders.map(o => `
+        <div class="order-history-item">
+            <div>
+                <b style="color:#fff; font-size: 13px;">${o.order_id}</b>
+                <div style="font-size: 11px; color: var(--text-muted);">${o.plan_name} • ${o.amount} ${o.currency}</div>
+                <div style="margin-top: 4px;">
+                    <a href="/api/invoice?id=${o.order_id}" target="_blank" style="color: #38bdf8; font-size: 11px; text-decoration: none; font-weight: 700;">
+                        🧾 View Invoice / Receipt ↗
+                    </a>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <span class="badge badge-${o.status}">${o.status}</span>
+                ${o.dns_url ? `<div style="font-size: 11px; color: #38bdf8; margin-top: 2px;"><code style="word-break: break-all;">${o.dns_url}</code></div>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+function downloadIosProfile(clientId, dotDomain) {
+    const cleanHost = (dotDomain || `${clientId}.dnsbd.pp.ua`).trim();
+    const mobileconfig = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>PayloadContent</key>
+    <array>
+        <dict>
+            <key>DNSSettings</key>
+            <dict>
+                <key>DNSProtocol</key>
+                <string>HTTPS</string>
+                <key>ServerURL</key>
+                <string>https://${cleanHost}/dns-query</string>
+            </dict>
+            <key>PayloadDescription</key>
+            <string>Configures Encrypted DNS-over-HTTPS for ${cleanHost}</string>
+            <key>PayloadDisplayName</key>
+            <string>Private DNS (${clientId})</string>
+            <key>PayloadIdentifier</key>
+            <string>com.dns.profile.${clientId}</string>
+            <key>PayloadType</key>
+            <string>com.apple.dnsSettings.managed</string>
+            <key>PayloadUUID</key>
+            <string>${crypto.randomUUID()}</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+        </dict>
+    </array>
+    <key>PayloadDisplayName</key>
+    <string>Private DNS Access (${clientId})</string>
+    <key>PayloadIdentifier</key>
+    <string>com.dns.profile.${clientId}.main</string>
+    <key>PayloadRemovalDisallowed</key>
+    <false/>
+    <key>PayloadType</key>
+    <string>Configuration</string>
+    <key>PayloadUUID</key>
+    <string>${crypto.randomUUID()}</string>
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+</dict>
+</plist>`;
+
+    const blob = new Blob([mobileconfig], { type: "application/x-apple-aspen-config" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${clientId}-dns.mobileconfig`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
 // ----------------------------------------------------
-// Order Modal & Checkout
+// Order Modal Handling & Coupon Validation
 // ----------------------------------------------------
 function openOrderModal(planId) {
     if (!siteConfig || !siteConfig.plans) return;
-    const plan = siteConfig.plans.find(p => p.id === planId);
-    if (!plan) return;
-
-    currentPlan = plan;
+    currentPlan = siteConfig.plans.find(p => p.id === planId) || siteConfig.plans[0];
     currentCoupon = null;
 
-    const modal = document.getElementById("order-modal");
-    document.getElementById("order-plan-id").value = plan.id;
-    document.getElementById("modal-plan-title").textContent = `Order ${plan.name}`;
-    
-    // Clear coupon input & reset status
+    const planIdEl = document.getElementById("order-plan-id");
+    const planTitleEl = document.getElementById("modal-plan-title");
     const couponInput = document.getElementById("order-coupon-code");
     const couponMsg = document.getElementById("coupon-status-msg");
     const couponBadge = document.getElementById("coupon-applied-badge");
+
+    if (planIdEl) planIdEl.value = currentPlan.id;
+    if (planTitleEl) planTitleEl.textContent = `Order ${currentPlan.name}`;
     if (couponInput) couponInput.value = "";
-    if (couponMsg) {
-        couponMsg.textContent = "";
-        couponMsg.className = "coupon-status-msg";
-    }
+    if (couponMsg) couponMsg.style.display = "none";
     if (couponBadge) couponBadge.style.display = "none";
 
-    // Autofill user details if logged in
+    updateOrderModalPrice();
+
+    // Auto-fill if user logged in
     if (customerUser) {
         const nameIn = document.getElementById("order-name");
         const phoneIn = document.getElementById("order-phone");
         const emailIn = document.getElementById("order-email");
-        if (nameIn && customerUser.name) nameIn.value = customerUser.name;
-        if (phoneIn && customerUser.phone) phoneIn.value = customerUser.phone;
-        if (emailIn && customerUser.email) emailIn.value = customerUser.email;
+        if (nameIn) nameIn.value = customerUser.name || "";
+        if (phoneIn) phoneIn.value = customerUser.phone || "";
+        if (emailIn) emailIn.value = customerUser.email || "";
     }
 
-    updateOrderModalPrice();
+    const modal = document.getElementById("order-modal");
     if (modal) modal.style.display = "flex";
+}
+
+function updateOrderModalPrice() {
+    if (!currentPlan) return;
+    const planPriceEl = document.getElementById("modal-plan-price");
+    if (!planPriceEl) return;
+
+    let basePrice = currentPlan.price;
+    if (currentCoupon && currentCoupon.final_amount !== undefined) {
+        basePrice = currentCoupon.final_amount;
+    }
+
+    const formatted = formatPrice(basePrice);
+    planPriceEl.textContent = `${formatted.amount} ${formatted.symbol}`;
+}
+
+async function applyCouponCode() {
+    const input = document.getElementById("order-coupon-code");
+    const btn = document.getElementById("coupon-apply-btn");
+    const statusMsg = document.getElementById("coupon-status-msg");
+    const couponBadge = document.getElementById("coupon-applied-badge");
+
+    const code = (input ? input.value : "").trim();
+    if (!code) {
+        alert("Please enter a coupon code");
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Checking...";
+    }
+
+    try {
+        const res = await fetch("/api/coupon", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: code, amount: currentPlan ? currentPlan.price : 15 })
+        });
+        const json = await res.json();
+
+        if (json.success && json.data) {
+            currentCoupon = json.data;
+            updateOrderModalPrice();
+            if (statusMsg) {
+                statusMsg.style.display = "block";
+                statusMsg.style.color = "#34d399";
+                statusMsg.textContent = json.data.message;
+            }
+            if (couponBadge) couponBadge.style.display = "block";
+        } else {
+            currentCoupon = null;
+            updateOrderModalPrice();
+            if (statusMsg) {
+                statusMsg.style.display = "block";
+                statusMsg.style.color = "#f87171";
+                statusMsg.textContent = json.error || "Invalid coupon code";
+            }
+            if (couponBadge) couponBadge.style.display = "none";
+        }
+    } catch (e) {
+        if (statusMsg) {
+            statusMsg.style.display = "block";
+            statusMsg.style.color = "#f87171";
+            statusMsg.textContent = "Error checking coupon: " + e.message;
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Apply";
+        }
+    }
 }
 
 function closeOrderModal() {
@@ -900,112 +999,60 @@ function closeOrderModal() {
     if (modal) modal.style.display = "none";
 }
 
-function updateOrderModalPrice() {
-    if (!currentPlan) return;
-    let basePrice = currentPlan.price;
-
-    if (currentCoupon) {
-        if (currentCoupon.discount_type === "percent") {
-            basePrice = Math.max(0, basePrice * (1 - currentCoupon.discount_val / 100));
-        } else {
-            basePrice = Math.max(0, basePrice - currentCoupon.discount_val);
-        }
-    }
-
-    const formatted = formatPrice(basePrice);
-    const priceEl = document.getElementById("modal-plan-price");
-    if (priceEl) {
-        priceEl.textContent = `${formatted.amount} ${formatted.symbol} (${formatted.code})`;
-    }
-}
-
-// 🎟️ Apply Coupon Code Validation
-async function applyCouponCode() {
-    const input = document.getElementById("order-coupon-code");
-    const msg = document.getElementById("coupon-status-msg");
-    const badge = document.getElementById("coupon-applied-badge");
-    const btn = document.getElementById("coupon-apply-btn");
-
-    if (!input || !currentPlan) return;
-    const code = input.value.trim().toUpperCase();
-
-    if (!code) {
-        msg.textContent = "Please enter a coupon code.";
-        msg.className = "coupon-status-msg coupon-status-err";
-        return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = "...";
-
-    try {
-        const res = await fetch(`/api/coupon?code=${encodeURIComponent(code)}&amount=${currentPlan.price}`);
-        const json = await res.json();
-
-        if (json.success && json.coupon) {
-            currentCoupon = json.coupon;
-            msg.textContent = `✓ Coupon applied! Discount: ${json.discount_amount} SAR`;
-            msg.className = "coupon-status-msg coupon-status-ok";
-            if (badge) badge.style.display = "block";
-            updateOrderModalPrice();
-        } else {
-            currentCoupon = null;
-            msg.textContent = `❌ ${json.error || "Invalid coupon"}`;
-            msg.className = "coupon-status-msg coupon-status-err";
-            if (badge) badge.style.display = "none";
-            updateOrderModalPrice();
-        }
-    } catch (err) {
-        msg.textContent = "Coupon check error: " + err.message;
-        msg.className = "coupon-status-msg coupon-status-err";
-    } finally {
-        btn.disabled = false;
-        btn.textContent = "Apply";
-    }
-}
-
 async function submitOrder(e) {
     e.preventDefault();
     const btn = document.getElementById("order-submit-btn");
     btn.disabled = true;
-    btn.textContent = "Submitting Order...";
+    btn.textContent = "Processing Order...";
 
     const antiBot = await generateAntiBotPayload();
-    const planId = document.getElementById("order-plan-id").value;
+    const curr = getCurrencyDetails();
+
+    let finalAmount = currentPlan.price;
+    if (currentCoupon && currentCoupon.final_amount !== undefined) {
+        finalAmount = currentCoupon.final_amount;
+    }
 
     const payload = {
         ...antiBot,
-        plan_id: planId,
+        plan_id: currentPlan.id,
+        plan_name: currentPlan.name,
+        duration_days: currentPlan.duration_days,
+        amount: Math.round(finalAmount * curr.rate),
+        currency: curr.code,
+        coupon_code: currentCoupon ? currentCoupon.code : "",
         customer_name: document.getElementById("order-name").value.trim(),
         customer_phone: document.getElementById("order-phone").value.trim(),
         customer_email: document.getElementById("order-email").value.trim(),
         payment_method: document.getElementById("order-payment-method").value,
-        trx_id: document.getElementById("order-trx").value.trim(),
-        currency: selectedCurrency,
-        coupon_code: currentCoupon ? currentCoupon.code : null
+        trx_id: document.getElementById("order-trx").value.trim()
     };
+
+    const headers = { "Content-Type": "application/json" };
+    if (customerToken) {
+        headers["Authorization"] = `Bearer ${customerToken}`;
+    }
 
     try {
         const res = await fetch("/api/order", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: headers,
             body: JSON.stringify(payload)
         });
-        const json = await res.json();
+        const data = await res.json();
 
-        if (json.success) {
-            alert(`🎉 Order Placed Successfully!\n\nOrder ID: ${json.order_id}\nStatus: Verification in progress.\nWe will activate your private DNS immediately after checking the TrxID.`);
+        if (data.success) {
+            alert(`🎉 ${data.message}\n\nOrder ID: ${data.data.order_id}\nAmount: ${data.data.amount} ${data.data.currency}`);
             closeOrderModal();
-            document.getElementById("order-form").reset();
-            
             if (customerToken) {
                 fetchCustomerData();
+                openUserModal();
             }
         } else {
-            alert("❌ Failed to place order: " + (json.error || "Please check details."));
+            alert("❌ " + (data.error || "Order submission failed"));
         }
     } catch (err) {
-        alert("Submission error: " + err.message);
+        alert("❌ Connection error: " + err.message);
     } finally {
         btn.disabled = false;
         btn.textContent = "Confirm & Submit Order";
@@ -1013,68 +1060,64 @@ async function submitOrder(e) {
 }
 
 // ----------------------------------------------------
-// Status Checker Logic
+// Public DNS Status Checker
 // ----------------------------------------------------
 async function checkDnsStatus() {
     const input = document.getElementById("checker-query");
     const resultBox = document.getElementById("checker-result");
     const btn = document.getElementById("btn-checker");
 
-    const query = input.value.trim();
+    const query = (input ? input.value : "").trim();
     if (!query) {
-        alert("Please enter your phone number or DNS PIN.");
+        alert("Please enter your Phone Number or DNS PIN");
         return;
     }
 
-    btn.disabled = true;
-    btn.textContent = "Checking...";
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Checking...";
+    }
     resultBox.style.display = "none";
 
     try {
-        const res = await fetch(`/api/order/check?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/check-status?q=${encodeURIComponent(query)}`);
         const json = await res.json();
 
         resultBox.style.display = "block";
         if (json.success && json.data) {
             const d = json.data;
-            const isApproved = d.status === "approved";
-
             resultBox.innerHTML = `
-                <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; text-align: left;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <span style="font-weight: 800; font-size: 15px; color: #fff;">Status: <span class="badge badge-${d.status}">${d.status}</span></span>
-                        <span style="font-size: 12px; color: var(--text-muted);">${d.plan_name}</span>
-                    </div>
-
-                    ${isApproved && d.dns_url ? `
-                        <div class="dns-copy-box" style="margin-bottom: 10px;">
-                            <span class="dns-hostname-val">${d.dns_url}</span>
-                            <button type="button" class="copy-btn" onclick="navigator.clipboard.writeText('${d.dns_url}').then(() => alert('Copied: ${d.dns_url}'))">Copy Host</button>
-                        </div>
-                        <div style="font-size: 13px; color: #cbd5e1; line-height: 1.6;">
-                            <div>👤 <b>PIN / User:</b> <code style="color: #38bdf8;">${d.client_id}</code></div>
-                            <div>⏳ <b>Expires:</b> ${d.expire_date || 'Active'}</div>
-                        </div>
-                        <div style="margin-top: 12px;">
-                            <a href="/api/invoice?id=${d.order_id}" target="_blank" style="color: #38bdf8; font-size: 12px; font-weight: 700; text-decoration: none;">🧾 View Digital Invoice ↗</a>
-                        </div>
-                    ` : `
-                        <p style="color: #fbbf24; font-size: 13px; margin: 0;">Your payment is currently under verification. DNS credentials will appear here once approved!</p>
-                    `}
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <b style="color: #38bdf8; font-size: 16px;">${d.client_id || d.order_id}</b>
+                    <span class="badge badge-${d.status}">${d.status}</span>
                 </div>
+                <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+                    <div>🌐 <b>Private DNS:</b> <code style="color: #fff; word-break: break-all;">${d.dns_url || 'Pending Activation'}</code></div>
+                    <div>⏳ <b>Validity:</b> ${d.duration_days ? `${d.duration_days} Days` : '--'} (Expires: ${d.expire_date || 'N/A'})</div>
+                    <div>👤 <b>Customer:</b> ${d.customer_name}</div>
+                </div>
+                ${d.dns_url ? `
+                    <div style="margin-top: 14px; display: flex; gap: 8px;">
+                        <button class="btn-primary" style="padding: 6px 14px; font-size: 12px;" onclick="navigator.clipboard.writeText('${d.dns_url}').then(() => alert('Copied DNS Hostname: ${d.dns_url}'))">
+                            📋 Copy DNS Hostname
+                        </button>
+                    </div>
+                ` : ''}
             `;
         } else {
             resultBox.innerHTML = `
-                <div style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; padding: 14px; color: #f87171;">
-                    ❌ No active order or PIN found for "<b>${query}</b>".
+                <div style="color: #f87171; font-size: 13px; text-align: center;">
+                    ❌ ${json.error || "No active order or PIN found matching your query."}
                 </div>
             `;
         }
     } catch (e) {
         resultBox.style.display = "block";
-        resultBox.innerHTML = `<div style="color: #f87171;">Error checking status: ${e.message}</div>`;
+        resultBox.innerHTML = `<div style="color: #f87171; font-size: 13px;">Error: ${e.message}</div>`;
     } finally {
-        btn.disabled = false;
-        btn.textContent = (siteConfig && siteConfig.btn_checker_text) || "Check Status";
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = siteConfig && siteConfig.btn_checker_text ? siteConfig.btn_checker_text : "Check Status";
+        }
     }
 }
