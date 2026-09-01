@@ -20,9 +20,15 @@ export async function onRequestGet(context) {
             return json({
                 success: true,
                 configured: false,
+                data: {
+                    credits: 0,
+                    test_pins: 0,
+                    test_credits: 0
+                },
                 credits: 0,
                 test_credits: 0,
-                message: "API Key not configured"
+                test_pins: 0,
+                message: "Reseller API Key is not configured yet. Go to Settings -> Store & API Settings to enter it."
             });
         }
 
@@ -40,14 +46,25 @@ export async function onRequestGet(context) {
         }
 
         const data = await res.json();
-        const reseller = data.data || {};
+        const reseller = data.data || data.reseller || data || {};
+
+        const credits = reseller.credits !== undefined ? reseller.credits : (reseller.balance !== undefined ? reseller.balance : 0);
+        const testCredits = reseller.test_credits !== undefined ? reseller.test_credits : (reseller.test_pins !== undefined ? reseller.test_pins : (reseller.remaining_test_credits !== undefined ? reseller.remaining_test_credits : 0));
 
         return json({
             success: true,
             configured: true,
+            data: {
+                username: reseller.username || "Reseller",
+                credits: credits,
+                test_pins: testCredits,
+                test_credits: testCredits,
+                stats: reseller.stats || {}
+            },
             username: reseller.username,
-            credits: reseller.credits !== undefined ? reseller.credits : 0,
-            test_credits: reseller.test_credits !== undefined ? reseller.test_credits : 0,
+            credits: credits,
+            test_credits: testCredits,
+            test_pins: testCredits,
             stats: reseller.stats || {}
         });
     } catch (e) {

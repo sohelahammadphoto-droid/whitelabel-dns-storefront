@@ -198,6 +198,11 @@ export async function onRequestPost(context) {
             await setSetting(env, key, val);
         }
 
+        if (body.currency) {
+            const symMap = { BDT: "৳", SAR: "﷼", USD: "$", AED: "د.إ", EUR: "€", GBP: "£", INR: "₹", MYR: "RM" };
+            await setSetting(env, "currency_symbol", symMap[body.currency] || body.currency);
+        }
+
         return json({
             success: true,
             message: "Settings saved successfully to database!"

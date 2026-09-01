@@ -109,16 +109,19 @@ function applyThemeTokens() {
     if (siteConfig.theme_primary) {
         root.style.setProperty("--primary", siteConfig.theme_primary);
         root.style.setProperty("--border-glow", `${siteConfig.theme_primary}4D`);
+        root.style.setProperty("--shadow-glow", `0 0 35px -5px ${siteConfig.theme_primary}40`);
     }
     if (siteConfig.theme_primary_hover) {
         root.style.setProperty("--primary-hover", siteConfig.theme_primary_hover);
     }
     if (siteConfig.theme_accent) {
         root.style.setProperty("--accent-cyan", siteConfig.theme_accent);
+        root.style.setProperty("--accent", siteConfig.theme_accent);
     }
-    if (siteConfig.theme_bg_mode) {
-        document.body.dataset.bg = siteConfig.theme_bg_mode;
-    }
+    const bgMode = siteConfig.theme_bg_mode || "cyber";
+    document.body.dataset.bg = bgMode;
+    document.body.setAttribute('data-bg', bgMode);
+    document.body.setAttribute('data-theme', bgMode);
 }
 
 // 💉 Inject Custom CSS and Custom JS from Admin
@@ -141,37 +144,21 @@ function injectCustomCode() {
     }
 }
 
-// 💱 Currency Conversion Helper
+// 💰 Reseller Selected Store Currency
 function getCurrencyDetails() {
-    const defaultCurr = { code: "SAR", symbol: "﷼", rate: 1.0 };
-    if (!siteConfig || !siteConfig.currencies) return defaultCurr;
-    return siteConfig.currencies.find(c => c.code === selectedCurrency) || siteConfig.currencies[0] || defaultCurr;
+    const code = siteConfig?.currency || "BDT";
+    const symMap = { BDT: "৳", SAR: "﷼", USD: "$", AED: "د.إ", EUR: "€", GBP: "£", INR: "₹", MYR: "RM" };
+    const symbol = siteConfig?.currency_symbol || symMap[code] || code;
+    return { code, symbol, rate: 1.0 };
 }
 
-function formatPrice(baseAmountInSAR) {
+function formatPrice(baseAmount) {
     const curr = getCurrencyDetails();
-    const converted = baseAmountInSAR * curr.rate;
     return {
-        amount: Math.round(converted),
+        amount: baseAmount,
         symbol: curr.symbol,
         code: curr.code
     };
-}
-
-function handleCurrencyChange(newCurr) {
-    selectedCurrency = newCurr;
-    localStorage.setItem("selected_currency", newCurr);
-    
-    // Sync both desktop and mobile selects
-    const dSelect = document.getElementById("currency-select");
-    const mSelect = document.getElementById("mobile-currency-select");
-    if (dSelect) dSelect.value = newCurr;
-    if (mSelect) mSelect.value = newCurr;
-
-    renderPlans();
-    if (currentPlan) {
-        updateOrderModalPrice();
-    }
 }
 
 // Render dynamic texts, hero titles, buttons and announcements
@@ -831,7 +818,7 @@ function renderUserOrderHistory(orders) {
 }
 
 function downloadIosProfile(clientId, dotDomain) {
-    const cleanHost = (dotDomain || `${clientId}.dnsbd.pp.ua`).trim();
+    const cleanHost = (dotDomain || clientId || "private-dns-server.com").trim();
     const mobileconfig = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -1018,7 +1005,7 @@ async function submitOrder(e) {
         plan_id: currentPlan.id,
         plan_name: currentPlan.name,
         duration_days: currentPlan.duration_days,
-        amount: Math.round(finalAmount * curr.rate),
+        amount: finalAmount,
         currency: curr.code,
         coupon_code: currentCoupon ? currentCoupon.code : "",
         customer_name: document.getElementById("order-name").value.trim(),

@@ -399,13 +399,22 @@ async function loadBalance() {
     try {
         const res = await fetch("/api/admin/balance", { headers: getHeaders() });
         const json = await res.json();
-        if (json.success && json.data) {
-            const balEl = document.getElementById("reseller-balance");
-            const testBalEl = document.getElementById("reseller-test-balance");
-            const testBadge = document.getElementById("test-pin-badge-count");
-            if (balEl) balEl.textContent = `${json.data.credits || 0} Credits`;
-            if (testBalEl) testBalEl.textContent = `${json.data.test_pins || 0} Avail`;
-            if (testBadge) testBadge.textContent = `${json.data.test_pins || 0} Available`;
+        const balEl = document.getElementById("reseller-balance");
+        const testBalEl = document.getElementById("reseller-test-balance");
+        const testBadge = document.getElementById("test-pin-badge-count");
+        
+        if (json.success) {
+            const d = json.data || json;
+            const credits = d.credits !== undefined ? d.credits : (d.balance !== undefined ? d.balance : 0);
+            const testPins = d.test_pins !== undefined ? d.test_pins : (d.test_credits !== undefined ? d.test_credits : 0);
+            
+            if (balEl) balEl.textContent = `${credits} Credits`;
+            if (testBalEl) testBalEl.textContent = `${testPins} Avail`;
+            if (testBadge) testBadge.textContent = `${testPins} Available`;
+        } else {
+            if (balEl) balEl.textContent = "0 Credits";
+            if (testBalEl) testBalEl.textContent = "0 Avail";
+            if (testBadge) testBadge.textContent = "0 Available";
         }
     } catch (e) {
         console.error("Balance fetch error:", e);
@@ -443,12 +452,13 @@ async function loadSettings() {
         setCheck("toggle-guide", d.show_guide !== false);
         setCheck("toggle-customhtml", Boolean(d.show_custom_html));
 
-        // Branding
+        // Branding & Currency
         setVal("custom-sitename", d.site_name || "UltraDNS Pro");
         setVal("custom-sitebadge", d.site_badge || "PRO");
         setVal("custom-sitelogo", d.site_logo || "");
         setVal("custom-sitefavicon", d.site_favicon || "");
         setVal("custom-ownername", d.owner_name || "Premium Services");
+        setVal("custom-currency", d.currency || "BDT");
 
         // Hero & Notice
         setVal("custom-notice", d.notice || "");
@@ -640,6 +650,7 @@ async function handleSaveCustomizer(e) {
         site_logo: document.getElementById("custom-sitelogo").value.trim(),
         site_favicon: document.getElementById("custom-sitefavicon").value.trim(),
         owner_name: document.getElementById("custom-ownername").value.trim(),
+        currency: document.getElementById("custom-currency") ? document.getElementById("custom-currency").value : "BDT",
 
         notice: document.getElementById("custom-notice").value.trim(),
         hero_pill_text: document.getElementById("custom-heropill").value.trim(),

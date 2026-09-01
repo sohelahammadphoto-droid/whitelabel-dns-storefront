@@ -19,45 +19,62 @@
     --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }
 
-/* Background Theme Modes (WordPress-Style Theme Engine) */
-body[data-bg="cyber"] {
+/* Background & Theme Modes (Supports both data-bg and data-theme attributes) */
+body[data-bg="cyber"], body[data-theme="cyber"] {
     --bg-dark: #090d16;
     --bg-card: rgba(18, 26, 43, 0.75);
     --bg-card-hover: rgba(28, 40, 65, 0.85);
+    --border-color: rgba(255, 255, 255, 0.08);
+    --border-glow: rgba(99, 102, 241, 0.3);
+    --shadow-glow: 0 0 35px -5px rgba(99, 102, 241, 0.25);
 }
-body[data-bg="amoled"] {
+body[data-bg="amoled"], body[data-theme="amoled"] {
     --bg-dark: #000000;
     --bg-card: rgba(18, 18, 18, 0.85);
     --bg-card-hover: rgba(28, 28, 28, 0.95);
     --border-color: rgba(255, 255, 255, 0.12);
+    --border-glow: rgba(59, 130, 246, 0.35);
+    --shadow-glow: 0 0 35px -5px rgba(59, 130, 246, 0.25);
 }
-body[data-bg="navy"] {
+body[data-bg="navy"], body[data-theme="navy"] {
     --bg-dark: #0b1329;
     --bg-card: rgba(16, 26, 52, 0.8);
     --bg-card-hover: rgba(24, 38, 75, 0.9);
+    --border-color: rgba(56, 189, 248, 0.12);
+    --border-glow: rgba(56, 189, 248, 0.35);
+    --shadow-glow: 0 0 35px -5px rgba(56, 189, 248, 0.25);
 }
-body[data-bg="slate"] {
+body[data-bg="slate"], body[data-theme="slate"] {
     --bg-dark: #0f172a;
     --bg-card: rgba(30, 41, 59, 0.8);
     --bg-card-hover: rgba(45, 62, 89, 0.9);
+    --border-color: rgba(255, 255, 255, 0.08);
+    --border-glow: rgba(16, 185, 129, 0.35);
+    --shadow-glow: 0 0 35px -5px rgba(16, 185, 129, 0.25);
 }
-body[data-bg="sunset"] {
+body[data-bg="sunset"], body[data-theme="sunset"] {
     --bg-dark: #140d0a;
     --bg-card: rgba(36, 20, 16, 0.8);
     --bg-card-hover: rgba(50, 28, 22, 0.9);
-    --border-glow: rgba(245, 158, 11, 0.3);
+    --border-color: rgba(245, 158, 11, 0.15);
+    --border-glow: rgba(245, 158, 11, 0.35);
+    --shadow-glow: 0 0 35px -5px rgba(245, 158, 11, 0.25);
 }
-body[data-bg="violet"] {
+body[data-bg="violet"], body[data-theme="violet"] {
     --bg-dark: #120b1f;
     --bg-card: rgba(28, 16, 48, 0.8);
     --bg-card-hover: rgba(42, 24, 72, 0.9);
-    --border-glow: rgba(168, 85, 247, 0.3);
+    --border-color: rgba(168, 85, 247, 0.15);
+    --border-glow: rgba(168, 85, 247, 0.35);
+    --shadow-glow: 0 0 35px -5px rgba(168, 85, 247, 0.25);
 }
-body[data-bg="emerald"] {
+body[data-bg="emerald"], body[data-theme="emerald"] {
     --bg-dark: #071611;
     --bg-card: rgba(12, 36, 28, 0.8);
     --bg-card-hover: rgba(18, 52, 40, 0.9);
-    --border-glow: rgba(16, 185, 129, 0.3);
+    --border-color: rgba(16, 185, 129, 0.15);
+    --border-glow: rgba(16, 185, 129, 0.35);
+    --shadow-glow: 0 0 35px -5px rgba(16, 185, 129, 0.25);
 }
 
 * {

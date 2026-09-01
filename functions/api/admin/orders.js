@@ -112,7 +112,7 @@ export async function onRequestPost(context) {
 
             const clientData = apiData.data || {};
             const clientId = clientData.client_id || clientData.username || username;
-            const dnsUrl = clientData.dns_url || clientData.dot_domain || clientData.dot_host || clientData.android_dns || `${clientId}.dnsbd.pp.ua`;
+            const dnsUrl = clientData.dns_url || clientData.dot_domain || clientData.dot_host || clientData.android_dns || clientId;
             const expireDate = clientData.expires_at || clientData.expire_date || "";
 
             // Update order in D1
