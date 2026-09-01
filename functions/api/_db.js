@@ -56,6 +56,32 @@ export async function initDb(env) {
                 )
             `),
             env.DB.prepare(`
+                CREATE TABLE IF NOT EXISTS coupons (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    code TEXT UNIQUE NOT NULL,
+                    discount_type TEXT NOT NULL DEFAULT 'percent', -- percent, fixed
+                    discount_val REAL NOT NULL,
+                    min_amount REAL DEFAULT 0,
+                    max_uses INTEGER DEFAULT 0, -- 0 = unlimited
+                    used_count INTEGER DEFAULT 0,
+                    expires_at TEXT,
+                    status TEXT NOT NULL DEFAULT 'active', -- active, inactive
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `),
+            env.DB.prepare(`
+                CREATE TABLE IF NOT EXISTS staff (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    role TEXT NOT NULL DEFAULT 'support', -- superadmin, subreseller, support
+                    credit_balance REAL DEFAULT 0,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `),
+            env.DB.prepare(`
                 CREATE INDEX IF NOT EXISTS idx_orders_phone ON orders(customer_phone)
             `),
             env.DB.prepare(`
@@ -66,6 +92,9 @@ export async function initDb(env) {
             `),
             env.DB.prepare(`
                 CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email)
+            `),
+            env.DB.prepare(`
+                CREATE INDEX IF NOT EXISTS idx_coupons_code ON coupons(code)
             `)
         ]);
         return true;
