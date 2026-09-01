@@ -38,6 +38,7 @@ export async function onRequestGet(context) {
                 phone: customer.phone,
                 created_at: customer.created_at
             },
+            active_dns: activeServices,
             active_services: activeServices,
             orders: orders
         });
