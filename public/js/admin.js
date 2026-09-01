@@ -1,55 +1,51 @@
-// public/js/admin.js — Reseller Storefront Admin Dashboard & Customizer Logic
-let authToken = localStorage.getItem("store_admin_token") || "";
+// public/js/admin.js — WordPress-Style Storefront Administration & Studio Controller
+let adminPassword = localStorage.getItem("admin_password") || "";
+let cachedSettings = {};
+let currentFaqs = [];
+let currentTestimonials = [];
 
 document.addEventListener("DOMContentLoaded", () => {
-    checkFirstTimeSetup();
+    checkSetupStatus();
 });
 
-async function checkFirstTimeSetup() {
+function getHeaders() {
+    return {
+        "Content-Type": "application/json",
+        "X-Admin-Password": adminPassword,
+        "Authorization": `Bearer ${btoa(adminPassword + ":storeadmin")}`
+    };
+}
+
+// ----------------------------------------------------
+// Setup Wizard & Authentication
+// ----------------------------------------------------
+async function checkSetupStatus() {
     try {
-        const res = await fetch("/api/admin/check-setup");
-        const json = await res.json();
-        if (json.isFirstTime) {
+        const res = await fetch("/api/admin/setup");
+        const data = await res.json();
+        if (data.needsSetup) {
             document.getElementById("setup-screen").style.display = "flex";
             document.getElementById("login-screen").style.display = "none";
             document.getElementById("admin-app").style.display = "none";
-            return;
+        } else {
+            document.getElementById("setup-screen").style.display = "none";
+            if (adminPassword) {
+                verifyAndLaunch();
+            } else {
+                document.getElementById("login-screen").style.display = "flex";
+                document.getElementById("admin-app").style.display = "none";
+            }
         }
-    } catch (_) {}
-
-    if (authToken) {
-        verifySession();
-    } else {
-        showLoginScreen();
-    }
-}
-
-function showLoginScreen() {
-    document.getElementById("setup-screen").style.display = "none";
-    document.getElementById("login-screen").style.display = "flex";
-    document.getElementById("admin-app").style.display = "none";
-}
-
-async function verifySession() {
-    try {
-        const res = await fetch("/api/admin/orders", {
-            headers: { "Authorization": `Bearer ${authToken}` }
-        });
-        if (res.status === 401) {
-            handleLogout();
-            return;
-        }
-        initDashboard();
-    } catch (e) {
-        handleLogout();
+    } catch {
+        document.getElementById("login-screen").style.display = "flex";
     }
 }
 
 async function handleInitialSetup(e) {
     e.preventDefault();
-    const submitBtn = document.getElementById("setup-submit-btn");
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Setting up store...";
+    const btn = document.getElementById("setup-submit-btn");
+    btn.disabled = true;
+    btn.textContent = "Initializing Store...";
 
     const payload = {
         admin_password: document.getElementById("setup-password").value.trim(),
@@ -60,54 +56,56 @@ async function handleInitialSetup(e) {
     };
 
     try {
-        const res = await fetch("/api/admin/initial-setup", {
+        const res = await fetch("/api/admin/setup", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
         const data = await res.json();
-        if (data.success && data.token) {
-            authToken = data.token;
-            localStorage.setItem("store_admin_token", authToken);
-            alert("🎉 Store initialized successfully! Welcome to your Admin Dashboard.");
-            initDashboard();
+
+        if (data.success) {
+            adminPassword = payload.admin_password;
+            localStorage.setItem("admin_password", adminPassword);
+            document.getElementById("setup-screen").style.display = "none";
+            verifyAndLaunch();
         } else {
-            alert("❌ Setup failed: " + (data.error || "Unknown error"));
-            submitBtn.disabled = false;
-            submitBtn.textContent = "✨ Save & Launch Admin Dashboard";
+            alert("❌ Setup Error: " + (data.error || "Failed to initialize"));
+            btn.disabled = false;
+            btn.textContent = "✨ Save & Launch Admin Dashboard";
         }
     } catch (err) {
         alert("Error: " + err.message);
-        submitBtn.disabled = false;
-        submitBtn.textContent = "✨ Save & Launch Admin Dashboard";
+        btn.disabled = false;
+        btn.textContent = "✨ Save & Launch Admin Dashboard";
     }
 }
 
 async function handleLogin(e) {
     e.preventDefault();
-    const pass = document.getElementById("admin-pass").value;
     const btn = document.getElementById("login-btn");
-    btn.disabled = true;
-    btn.textContent = "Verifying...";
+    const pass = document.getElementById("admin-pass").value.trim();
 
-    authToken = btoa(pass + ":" + Date.now());
+    btn.disabled = true;
+    btn.textContent = "Logging in...";
 
     try {
-        const res = await fetch("/api/admin/orders", {
-            headers: { "Authorization": `Bearer ${authToken}` }
+        const res = await fetch("/api/admin/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password: pass })
         });
         const data = await res.json();
 
-        if (res.ok && data.success) {
-            localStorage.setItem("store_admin_token", authToken);
-            initDashboard();
+        if (data.success) {
+            adminPassword = pass;
+            localStorage.setItem("admin_password", adminPassword);
+            document.getElementById("login-screen").style.display = "none";
+            verifyAndLaunch();
         } else {
-            alert("❌ Invalid Admin Password");
-            authToken = "";
-            localStorage.removeItem("store_admin_token");
+            alert("❌ " + (data.error || "Invalid password"));
         }
     } catch (err) {
-        alert("Login error: " + err.message);
+        alert("Login failed: " + err.message);
     } finally {
         btn.disabled = false;
         btn.textContent = "Login to Dashboard";
@@ -115,536 +113,535 @@ async function handleLogin(e) {
 }
 
 function handleLogout() {
-    authToken = "";
-    localStorage.removeItem("store_admin_token");
-    showLoginScreen();
+    localStorage.removeItem("admin_password");
+    adminPassword = "";
+    document.getElementById("admin-app").style.display = "none";
+    document.getElementById("login-screen").style.display = "flex";
 }
 
-function initDashboard() {
-    document.getElementById("setup-screen").style.display = "none";
-    document.getElementById("login-screen").style.display = "none";
-    document.getElementById("admin-app").style.display = "flex";
-    loadOrders();
-    loadBalance();
-    loadSettings();
+async function verifyAndLaunch() {
+    try {
+        const res = await fetch("/api/admin/orders", { headers: getHeaders() });
+        if (res.status === 401) {
+            handleLogout();
+            return;
+        }
+        document.getElementById("login-screen").style.display = "none";
+        document.getElementById("admin-app").style.display = "flex";
+
+        showTab("analytics");
+        loadBalance();
+        loadAnalytics();
+        loadOrders();
+        loadSettings();
+    } catch {
+        handleLogout();
+    }
+}
+
+// ----------------------------------------------------
+// Navigation Tab Switcher
+// ----------------------------------------------------
+function showTab(tabName) {
+    const tabs = ["analytics", "orders", "customizer", "coupons", "staff", "testpin", "generate", "email", "settings"];
+    tabs.forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        if (el) el.style.display = (t === tabName) ? "block" : "none";
+    });
+
+    const items = document.querySelectorAll(".admin-nav-item");
+    items.forEach((item, idx) => {
+        if (idx < tabs.length) {
+            item.classList.toggle("active", tabs[idx] === tabName);
+        }
+    });
+
+    const titleEl = document.getElementById("page-title");
+    const subEl = document.getElementById("page-subtitle");
+
+    if (tabName === "analytics") {
+        if (titleEl) titleEl.textContent = "Analytics & Insights";
+        if (subEl) subEl.textContent = "Real-time revenue, conversion, and DNS operations";
+        loadAnalytics();
+    } else if (tabName === "orders") {
+        if (titleEl) titleEl.textContent = "Orders & Sales";
+        if (subEl) subEl.textContent = "Manage customer payments and DNS activations";
+        loadOrders();
+    } else if (tabName === "customizer") {
+        if (titleEl) titleEl.textContent = "Themes & Page Builder";
+        if (subEl) subEl.textContent = "Design studio, section toggles, FAQs, reviews, and custom codes";
+    } else if (tabName === "coupons") {
+        if (titleEl) titleEl.textContent = "Discount Coupons";
+        if (subEl) subEl.textContent = "Create and manage promotional discount coupons for checkout";
+        loadCoupons();
+    } else if (tabName === "staff") {
+        if (titleEl) titleEl.textContent = "Staff & Sub-Resellers";
+        if (subEl) subEl.textContent = "Manage sub-resellers and support agent accounts";
+        loadStaff();
+    } else if (tabName === "testpin") {
+        if (titleEl) titleEl.textContent = "30-Min Test PIN Generator";
+        if (subEl) subEl.textContent = "Instant trial PINs for prospective customers";
+    } else if (tabName === "generate") {
+        if (titleEl) titleEl.textContent = "Full Pass PIN Generation";
+        if (subEl) subEl.textContent = "Manual generation using your main platform credits";
+    } else if (tabName === "email") {
+        if (titleEl) titleEl.textContent = "Email & Notifications";
+        if (subEl) subEl.textContent = "Configure automated Gmail OTP and order approval emails";
+    } else if (tabName === "settings") {
+        if (titleEl) titleEl.textContent = "Store & API Settings";
+        if (subEl) subEl.textContent = "Telegram alerts, Reseller API key, and security";
+    }
+}
+
+// ----------------------------------------------------
+// 1. Analytics & Sales Dashboard
+// ----------------------------------------------------
+async function loadAnalytics() {
+    try {
+        const res = await fetch("/api/admin/analytics", { headers: getHeaders() });
+        const json = await res.json();
+        if (!json.success || !json.data) return;
+
+        const d = json.data;
+        const curSym = cachedSettings.currency_symbol || "﷼";
+
+        const revEl = document.getElementById("analytic-revenue");
+        const totEl = document.getElementById("analytic-total-orders");
+        const convEl = document.getElementById("analytic-conversion");
+        const custEl = document.getElementById("analytic-customers");
+
+        if (revEl) revEl.textContent = `${d.total_revenue} ${curSym}`;
+        if (totEl) totEl.textContent = d.total_orders;
+        if (convEl) convEl.textContent = `${d.conversion_rate}%`;
+        if (custEl) custEl.textContent = d.total_customers;
+
+        // Render Bar Chart
+        const chartBox = document.getElementById("analytics-chart-container");
+        if (chartBox) {
+            if (!d.recent_trend || d.recent_trend.length === 0) {
+                chartBox.innerHTML = `<div style="text-align: center; width: 100%; color: var(--text-muted); padding: 40px 0;">No sales history in the past 7 days yet.</div>`;
+            } else {
+                const maxRev = Math.max(...d.recent_trend.map(t => t.revenue || 0), 1);
+                chartBox.innerHTML = d.recent_trend.map(t => {
+                    const heightPercent = Math.max(8, Math.round(((t.revenue || 0) / maxRev) * 100));
+                    return `
+                    <div class="bar-col">
+                        <div style="font-size: 11px; font-weight: 800; color: #38bdf8; margin-bottom: 4px;">${t.revenue || 0}</div>
+                        <div class="bar-fill" style="height: ${heightPercent}%;"></div>
+                        <div class="bar-label">${t.date ? t.date.slice(5) : ''}<br><span style="color:#64748b;">(${t.count} ord)</span></div>
+                    </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Render Top Plans
+        const topPlansBox = document.getElementById("analytics-top-plans");
+        if (topPlansBox) {
+            if (!d.top_plans || d.top_plans.length === 0) {
+                topPlansBox.innerHTML = `<div style="color: var(--text-muted); font-size: 13px;">No approved orders yet</div>`;
+            } else {
+                topPlansBox.innerHTML = d.top_plans.map(p => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                        <b style="color: #fff;">${p.plan_name}</b>
+                        <span style="font-size: 12px; color: #34d399; font-weight: 700;">${p.count} sold (${p.revenue} ${curSym})</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Render Payment Methods
+        const payMethodsBox = document.getElementById("analytics-payment-methods");
+        if (payMethodsBox) {
+            if (!d.payment_methods || d.payment_methods.length === 0) {
+                payMethodsBox.innerHTML = `<div style="color: var(--text-muted); font-size: 13px;">No payments recorded yet</div>`;
+            } else {
+                payMethodsBox.innerHTML = d.payment_methods.map(m => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                        <span style="color: #cbd5e1; font-weight: 600; text-transform: uppercase;">${m.payment_method}</span>
+                        <span style="font-size: 12px; color: #38bdf8; font-weight: 700;">${m.count} trx (${m.revenue} ${curSym})</span>
+                    </div>
+                `).join('');
+            }
+        }
+    } catch (e) {
+        console.error("Analytics fetch error:", e);
+    }
+}
+
+// ----------------------------------------------------
+// 2. Orders Management
+// ----------------------------------------------------
+async function loadOrders() {
+    try {
+        const res = await fetch("/api/admin/orders", { headers: getHeaders() });
+        const json = await res.json();
+        const tbody = document.getElementById("orders-tbody");
+
+        if (!json.success || !json.data || json.data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No customer orders found.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = json.data.map(o => `
+            <tr>
+                <td>
+                    <b style="color:#fff;">${o.order_id}</b>
+                    <div style="font-size: 11px; color: var(--text-muted);">${o.created_at || ''}</div>
+                    <div style="margin-top: 4px;">
+                        <a href="/api/invoice?id=${o.order_id}" target="_blank" style="color: #38bdf8; font-size: 11px; text-decoration: none; font-weight: 700;">
+                            🧾 Invoice ↗
+                        </a>
+                    </div>
+                </td>
+                <td>
+                    <b style="color:#cbd5e1;">${o.customer_name}</b>
+                    <div style="font-size: 11px; color: #38bdf8;">${o.customer_phone}</div>
+                    ${o.customer_email ? `<div style="font-size: 11px; color: var(--text-muted);">${o.customer_email}</div>` : ''}
+                </td>
+                <td>
+                    <b>${o.plan_name}</b>
+                    <div style="font-size: 11px; color: #34d399; font-weight: 700;">${o.amount} ${o.currency || 'SAR'}</div>
+                </td>
+                <td>
+                    <span style="font-weight: 600; color: #cbd5e1; text-transform: uppercase;">${o.payment_method}</span>
+                    <div style="font-size: 11px; color: #a5b4fc; font-family: monospace;">${o.trx_id}</div>
+                </td>
+                <td>
+                    <span class="badge badge-${o.status}">${o.status}</span>
+                </td>
+                <td>
+                    ${o.dns_url ? `
+                        <div style="font-size: 12px; font-weight: 700; color: #38bdf8;">PIN: ${o.client_id}</div>
+                        <div style="font-size: 11px; color: var(--text-muted); word-break: break-all;"><code>${o.dns_url}</code></div>
+                    ` : '<span style="color: var(--text-muted); font-size: 12px;">--</span>'}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                        ${o.status === 'pending' ? `
+                            <button class="btn btn-success btn-sm" onclick="approveOrder('${o.order_id}')">✓ Approve</button>
+                            <button class="btn btn-danger btn-sm" onclick="rejectOrder('${o.order_id}')">✕ Reject</button>
+                        ` : ''}
+                        ${o.status === 'approved' && o.dns_url ? `
+                            <button class="btn btn-secondary btn-sm" onclick="shareWhatsApp('${o.order_id}', '${o.customer_phone}', '${o.client_id}', '${o.dns_url}', '${o.duration_days}')">
+                                💬 WhatsApp
+                            </button>
+                        ` : ''}
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error("Failed to load orders:", e);
+    }
+}
+
+async function approveOrder(orderId) {
+    if (!confirm(`Approve order ${orderId} and issue DNS access from balance?`)) return;
+
+    try {
+        const res = await fetch("/api/admin/orders", {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({ order_id: orderId, action: "approve" })
+        });
+        const json = await res.json();
+
+        if (json.success) {
+            alert("🎉 " + json.message);
+            loadOrders();
+            loadBalance();
+            loadAnalytics();
+        } else {
+            alert("❌ Failed to approve: " + (json.error || "Unknown error"));
+        }
+    } catch (e) {
+        alert("Error: " + e.message);
+    }
+}
+
+async function rejectOrder(orderId) {
+    if (!confirm(`Reject order ${orderId}?`)) return;
+
+    try {
+        const res = await fetch("/api/admin/orders", {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({ order_id: orderId, action: "reject" })
+        });
+        const json = await res.json();
+        if (json.success) {
+            loadOrders();
+            loadAnalytics();
+        } else {
+            alert("❌ " + json.error);
+        }
+    } catch (e) {
+        alert("Error: " + e.message);
+    }
+}
+
+function shareWhatsApp(orderId, phone, clientId, dnsUrl, duration) {
+    const cleanPhone = phone.replace(/[^0-9]/g, "");
+    const msg = encodeURIComponent(
+        `🎉 *Your Private DNS is Active!*\n\n` +
+        `👤 *PIN:* \`${clientId}\`\n` +
+        `🌐 *DNS Address:* \`${dnsUrl}\`\n` +
+        `⏳ *Duration:* ${duration} Days\n\n` +
+        `📱 *Android Setup:* Settings ➔ Connections ➔ Private DNS ➔ \`${dnsUrl}\`\n` +
+        `🍏 *iPhone / iPad:* Sign in at our website to download 1-Click Profile\n\n` +
+        `🧾 *Invoice:* ${window.location.origin}/api/invoice?id=${orderId}`
+    );
+    window.open(`https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`, '_blank');
 }
 
 async function loadBalance() {
     try {
-        const res = await fetch("/api/admin/balance", {
-            headers: { "Authorization": `Bearer ${authToken}` }
-        });
+        const res = await fetch("/api/admin/balance", { headers: getHeaders() });
         const json = await res.json();
-        if (json.success) {
-            const mainEl = document.getElementById("reseller-balance");
-            const testEl = document.getElementById("reseller-test-balance");
+        if (json.success && json.data) {
+            const balEl = document.getElementById("reseller-balance");
+            const testBalEl = document.getElementById("reseller-test-balance");
             const testBadge = document.getElementById("test-pin-badge-count");
-
-            if (mainEl) mainEl.textContent = `${json.credits} Credits`;
-            if (testEl) testEl.textContent = `${json.test_credits} Avail`;
-            if (testBadge) testBadge.textContent = `${json.test_credits} Test PINs Available`;
-        }
-    } catch (_) {}
-}
-
-function showTab(tabName) {
-    document.querySelectorAll(".tab-content").forEach(el => el.style.display = "none");
-    document.querySelectorAll(".admin-nav-item").forEach(el => el.classList.remove("active"));
-    
-    const targetTab = document.getElementById(`tab-${tabName}`);
-    if (targetTab) targetTab.style.display = "block";
-
-    // Set active tab in sidebar
-    const tabsMap = {
-        orders: 0,
-        customizer: 1,
-        testpin: 2,
-        generate: 3,
-        email: 4,
-        settings: 5
-    };
-    const navItems = document.querySelectorAll(".admin-nav-item");
-    if (navItems[tabsMap[tabName]]) {
-        navItems[tabsMap[tabName]].classList.add("active");
-    }
-
-    const titles = { 
-        orders: { title: "Orders & Sales", subtitle: "Manage customer payments and DNS activations" },
-        customizer: { title: "🎨 Theme & Content Customizer", subtitle: "Customize colors, headings, button names, and announcements" },
-        testpin: { title: "🧪 30-Minute Free Test PIN", subtitle: "Generate instant 30-min trial PINs for prospective customers" },
-        generate: { title: "⚡ Full Pass PIN Gen", subtitle: "Create long-term DNS PINs directly from API balance" },
-        email: { title: "📧 Gmail OTP & Verification", subtitle: "Configure Brevo or Gmail SMTP verification for signups" },
-        settings: { title: "⚙️ Store & API Settings", subtitle: "Manage API keys, admin password, and anti-bot security" }
-    };
-
-    const t = titles[tabName] || { title: "Dashboard", subtitle: "" };
-    document.getElementById("page-title").textContent = t.title;
-    document.getElementById("page-subtitle").textContent = t.subtitle;
-}
-
-// Global copy helper with instant visual feedback
-window.copyToClipboard = function(text, btn, feedbackText = "✓ Copied!") {
-    if (!navigator.clipboard) {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-    } else {
-        navigator.clipboard.writeText(text);
-    }
-    
-    if (btn) {
-        const originalText = btn.innerHTML;
-        btn.innerHTML = feedbackText;
-        btn.style.borderColor = "#10b981";
-        btn.style.color = "#34d399";
-        setTimeout(() => {
-            btn.innerHTML = originalText;
-            btn.style.borderColor = "";
-            btn.style.color = "";
-        }, 2200);
-    }
-};
-
-// -------------------------------------------------------------
-// Orders Management
-// -------------------------------------------------------------
-async function loadOrders() {
-    const tbody = document.getElementById("orders-tbody");
-    try {
-        const res = await fetch("/api/admin/orders", {
-            headers: { "Authorization": `Bearer ${authToken}` }
-        });
-        const json = await res.json();
-
-        if (json.success) {
-            const orders = json.data || [];
-            
-            // Update Stats
-            document.getElementById("stat-total").textContent = orders.length;
-            document.getElementById("stat-pending").textContent = orders.filter(o => o.status === "pending").length;
-            document.getElementById("stat-approved").textContent = orders.filter(o => o.status === "approved").length;
-
-            if (orders.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No customer orders yet.</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = orders.map(o => {
-                const statusBadge = {
-                    pending: `<span class="badge badge-pending">⏳ Pending</span>`,
-                    approved: `<span class="badge badge-approved">✓ Approved</span>`,
-                    rejected: `<span class="badge badge-rejected">✕ Rejected</span>`
-                }[o.status] || o.status;
-
-                let actionBtn = "";
-                if (o.status === "pending") {
-                    actionBtn = `
-                        <div style="display: flex; gap: 6px;">
-                            <button class="btn btn-success btn-sm" onclick="handleOrderAction('${o.order_id}', 'approve')">Approve</button>
-                            <button class="btn btn-danger btn-sm" onclick="handleOrderAction('${o.order_id}', 'reject')">Reject</button>
-                        </div>
-                    `;
-                } else if (o.status === "approved") {
-                    const cleanPhone = (o.customer_phone || "").replace(/[^0-9]/g, "");
-                    const waShareMsg = `🎉 *DNS ACTIVATION COMPLETED* 🎉\n\n👤 *Username / PIN:* \`${o.client_id || 'N/A'}\`\n🌐 *Private DNS Address:* \`${o.dns_url || `${o.client_id}.dnsbd.pp.ua`}\`\n⏳ *Validity:* *${o.duration_days || 30} Days* (Expires: ${o.expire_date || 'N/A'})\n\n📲 *Android Setup:* Settings ➔ Connections ➔ Private DNS ➔ Specified DNS ➔ Enter: \`${o.dns_url || `${o.client_id}.dnsbd.pp.ua`}\`\n🍏 *iOS Profile:* https://dnshub.pages.dev/api/public/ios-profile?username=${o.client_id}\n\n🔥 Ultra-Fast Ad-Free Private DNS is active for your device!`;
-                    const waLink = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(waShareMsg)}`;
-                    const safeDns = (o.dns_url || `${o.client_id}.dnsbd.pp.ua`).replace(/'/g, "\\'");
-                    const safeWa = waShareMsg.replace(/'/g, "\\'").replace(/\n/g, "\\n");
-
-                    actionBtn = `
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <div style="display: flex; gap: 4px;">
-                                <button class="btn btn-secondary btn-sm" onclick="copyToClipboard('${safeDns}', this, '✓ Copied!')" title="Copy DNS Hostname">📋 DNS</button>
-                                <button class="btn btn-secondary btn-sm" onclick="copyToClipboard('${safeWa}', this, '✓ Copied!')" title="Copy Formatted WhatsApp Message">💬 Msg</button>
-                                ${cleanPhone ? `<a href="${waLink}" target="_blank" class="btn btn-success btn-sm" title="Send directly to WhatsApp">🚀 Send</a>` : ''}
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    actionBtn = `<span style="color: var(--text-muted); font-size: 12px;">Closed</span>`;
-                }
-
-                return `
-                    <tr>
-                        <td>
-                            <b>${o.order_id}</b>
-                            <div style="font-size: 11px; color: var(--text-muted);">${new Date(o.created_at || Date.now()).toLocaleDateString()}</div>
-                        </td>
-                        <td>
-                            <div><b>${o.customer_name}</b></div>
-                            <div style="font-size: 12px; color: var(--text-muted);">${o.customer_phone}</div>
-                        </td>
-                        <td>
-                            <div>${o.plan_name}</div>
-                            <div style="font-size: 12px; color: #38bdf8; font-weight: 700;">${o.amount} ${o.currency}</div>
-                        </td>
-                        <td>
-                            <div><b>${o.payment_method}</b></div>
-                            <div style="font-size: 11px; color: #a5b4fc;"><code>${o.trx_id}</code></div>
-                        </td>
-                        <td>${statusBadge}</td>
-                        <td>
-                            ${o.client_id ? `
-                                <div><b style="color: #38bdf8;">${o.client_id}</b></div>
-                                <div style="font-size: 11px; color: var(--text-muted);">${o.dns_url || ''}</div>
-                            ` : '<span style="color: var(--text-muted);">-</span>'}
-                        </td>
-                        <td>${actionBtn}</td>
-                    </tr>
-                `;
-            }).join('');
+            if (balEl) balEl.textContent = `${json.data.credits || 0} Credits`;
+            if (testBalEl) testBalEl.textContent = `${json.data.test_pins || 0} Avail`;
+            if (testBadge) testBadge.textContent = `${json.data.test_pins || 0} Available`;
         }
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="7" style="color: #f87171; text-align: center;">Error loading orders: ${e.message}</td></tr>`;
+        console.error("Balance fetch error:", e);
     }
 }
 
-async function handleOrderAction(orderId, action) {
-    if (!confirm(`Are you sure you want to ${action.toUpperCase()} order ${orderId}?`)) return;
-
+// ----------------------------------------------------
+// 3. Page Builder & Design Customizer
+// ----------------------------------------------------
+async function loadSettings() {
     try {
-        const res = await fetch("/api/admin/orders", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${authToken}`
-            },
-            body: JSON.stringify({ order_id: orderId, action })
-        });
-        const data = await res.json();
-        if (data.success) {
-            alert(`✅ Order ${orderId} has been ${action}ed!`);
-            loadOrders();
-            loadBalance();
-        } else {
-            alert("❌ Failed: " + (data.error || "Unknown error"));
-        }
-    } catch (err) {
-        alert("Action Error: " + err.message);
+        const res = await fetch("/api/admin/settings", { headers: getHeaders() });
+        const json = await res.json();
+        if (!json.success || !json.data) return;
+
+        cachedSettings = json.data;
+        const d = json.data;
+
+        // Theme colors & mode
+        setVal("custom-theme-primary", d.theme_primary || "#6366f1");
+        setVal("custom-theme-primary-hex", d.theme_primary || "#6366f1");
+        setVal("custom-theme-accent", d.theme_accent || "#06b6d4");
+        setVal("custom-theme-accent-hex", d.theme_accent || "#06b6d4");
+        setVal("custom-theme-bgmode", d.theme_bg_mode || "cyber");
+
+        // Section toggles
+        setCheck("toggle-notice", d.show_notice !== false);
+        setCheck("toggle-hero", d.show_hero !== false);
+        setCheck("toggle-stats", d.show_stats !== false);
+        setCheck("toggle-features", d.show_features !== false);
+        setCheck("toggle-pricing", d.show_pricing !== false);
+        setCheck("toggle-checker", d.show_checker !== false);
+        setCheck("toggle-testimonials", d.show_testimonials !== false);
+        setCheck("toggle-faq", d.show_faq !== false);
+        setCheck("toggle-guide", d.show_guide !== false);
+        setCheck("toggle-customhtml", Boolean(d.show_custom_html));
+
+        // Branding
+        setVal("custom-sitename", d.site_name || "UltraDNS Pro");
+        setVal("custom-sitebadge", d.site_badge || "PRO");
+        setVal("custom-sitelogo", d.site_logo || "");
+        setVal("custom-sitefavicon", d.site_favicon || "");
+        setVal("custom-ownername", d.owner_name || "Premium Services");
+
+        // Hero & Notice
+        setVal("custom-notice", d.notice || "");
+        setVal("custom-heropill", d.hero_pill_text || "");
+        setVal("custom-herotitle1", d.hero_title_line1 || "");
+        setVal("custom-herotitle2", d.hero_title_line2 || "");
+        setVal("custom-herosubtitle", d.hero_subtitle || "");
+        setVal("custom-btnherobuy", d.btn_hero_buy_text || "");
+        setVal("custom-btnherocheck", d.btn_hero_check_text || "");
+
+        // Custom Code
+        setVal("custom-html-code", d.custom_html || "");
+        setVal("custom-css-code", d.custom_css || "");
+        setVal("custom-js-code", d.custom_js || "");
+
+        // Socials & Support
+        setVal("custom-whatsapp", d.support_whatsapp || "");
+        setVal("custom-telegram", d.support_telegram || "");
+        setVal("custom-whatsappmsg", d.support_whatsapp_msg || "");
+
+        // Telegram Alerts
+        setVal("setting-telegrambottoken", d.telegram_bot_token || "");
+        setVal("setting-telegramchatid", d.telegram_chat_id || "");
+
+        // API & Security
+        setVal("setting-apikey", d.reseller_api_key || "");
+        setVal("setting-apiurl", d.main_api_url || "https://dnshub.pages.dev");
+        setVal("setting-turnstilesitekey", d.turnstile_site_key || "");
+        setVal("setting-turnstilesecretkey", d.turnstile_secret_key || "");
+
+        // Email settings
+        setVal("setting-emailprovider", d.email_provider || "none");
+        setVal("setting-brevoapikey", d.brevo_api_key || "");
+        setVal("setting-brevosenderemail", d.brevo_sender_email || "");
+        setVal("setting-brevosendername", d.brevo_sender_name || "");
+        toggleEmailProviderFields();
+
+        // FAQ items
+        currentFaqs = d.faqs || [];
+        renderAdminFaqs();
+
+        // Testimonials
+        currentTestimonials = d.testimonials || [];
+        renderAdminTestimonials();
+    } catch (e) {
+        console.error("Settings load error:", e);
     }
 }
 
-// -------------------------------------------------------------
-// 30-Minute Test PIN Generator
-// -------------------------------------------------------------
-async function handleGenerateTestPin(e) {
-    e.preventDefault();
-    const btn = document.getElementById("test-pin-submit-btn");
-    const resultBox = document.getElementById("test-pin-result");
-    const phone = document.getElementById("test-pin-phone").value.trim();
-    const note = document.getElementById("test-pin-note").value.trim();
-
-    btn.disabled = true;
-    btn.textContent = "Generating Trial PIN...";
-    resultBox.style.display = "none";
-
-    try {
-        const res = await fetch("/api/admin/test-pin", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${authToken}`
-            },
-            body: JSON.stringify({ phone, note })
-        });
-        const data = await res.json();
-
-        if (data.success && data.data) {
-            const pin = data.data;
-            const cleanPhone = (phone || "").replace(/[^0-9]/g, "");
-            const waShareMsg = pin.whatsapp_share_text || `⚡ *30-MIN PRIVATE DNS TEST PIN*\n\n👤 *Username:* \`${pin.username}\`\n⏱️ *Duration:* 30 Minutes\n🌐 *DNS Hostname:* \`${pin.dns_url}\`\n\n📲 *Android:* Settings ➔ Connections ➔ Private DNS ➔ \`${pin.dns_url}\``;
-            const waLink = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(waShareMsg)}`;
-            const safeDns = (pin.dns_url || '').replace(/'/g, "\\'");
-            const safeWa = waShareMsg.replace(/'/g, "\\'").replace(/\n/g, "\\n");
-
-            resultBox.style.display = "block";
-            resultBox.innerHTML = `
-                <div style="color: #34d399; font-weight: 800; font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                    <span>✓</span> 30-Minute Test PIN Generated!
-                </div>
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
-                    <div style="margin-bottom: 8px;"><span style="color: var(--text-muted); font-size: 12px;">Assigned PIN:</span> <b style="color: #38bdf8; font-size: 16px; font-family: monospace;">${pin.username}</b></div>
-                    <div style="margin-bottom: 8px;"><span style="color: var(--text-muted); font-size: 12px;">DNS Hostname:</span> <b style="color: #fff; font-size: 14px; font-family: monospace;">${pin.dns_url}</b></div>
-                    <div><span style="color: var(--text-muted); font-size: 12px;">Valid For:</span> <span style="color: #fbbf24; font-weight: 700;">30 Minutes</span></div>
-                </div>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="copyToClipboard('${safeDns}', this, '✓ Copied Hostname!')">📋 1. Copy Hostname</button>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="copyToClipboard('${safeWa}', this, '✓ Copied WhatsApp Msg!')">💬 2. Copy WhatsApp Msg</button>
-                    ${cleanPhone ? `<a href="${waLink}" target="_blank" class="btn btn-success btn-sm">🚀 Send to WhatsApp</a>` : ''}
-                </div>
-            `;
-            loadBalance();
-            loadOrders();
-        } else {
-            alert("❌ Generation failed: " + (data.error || "Unknown error"));
-        }
-    } catch (err) {
-        alert("Error: " + err.message);
-    } finally {
-        btn.disabled = false;
-        btn.textContent = "⚡ Generate 30-Min Test PIN";
-    }
+function setVal(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
 }
 
-// -------------------------------------------------------------
-// Full Pass PIN Generation
-// -------------------------------------------------------------
-async function handleManualGenerate(e) {
-    e.preventDefault();
-    const btn = document.getElementById("gen-submit-btn");
-    const resultBox = document.getElementById("gen-result");
-    const phone = document.getElementById("gen-phone").value.trim();
-    const duration = document.getElementById("gen-duration").value;
-    const note = document.getElementById("gen-note").value.trim();
-
-    btn.disabled = true;
-    btn.textContent = "Generating Paid PIN...";
-    resultBox.style.display = "none";
-
-    try {
-        const res = await fetch("/api/admin/generate", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${authToken}`
-            },
-            body: JSON.stringify({ phone, duration_days: duration, note })
-        });
-        const data = await res.json();
-
-        if (data.success && data.data) {
-            const client = data.data;
-            const cleanPhone = (phone || "").replace(/[^0-9]/g, "");
-            const waShareMsg = client.whatsapp_share_text || `🎉 *DNS ACTIVATION COMPLETED* 🎉\n\n👤 *Username / PIN:* \`${client.username}\`\n🌐 *Private DNS Address:* \`${client.dns_url}\`\n⏳ *Validity:* *${client.duration_days} Days* (Expires: ${client.expire_date || 'N/A'})\n\n📲 *Android Setup:* Settings ➔ Connections ➔ Private DNS ➔ Specified DNS ➔ Enter: \`${client.dns_url}\`\n🍏 *iOS Profile:* https://dnshub.pages.dev/api/public/ios-profile?username=${client.username}\n\n🔥 Ultra-Fast Ad-Free Private DNS is active for your device!`;
-            const waLink = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(waShareMsg)}`;
-            const safeDns = (client.dns_url || '').replace(/'/g, "\\'");
-            const safeWa = waShareMsg.replace(/'/g, "\\'").replace(/\n/g, "\\n");
-
-            resultBox.style.display = "block";
-            resultBox.innerHTML = `
-                <div style="color: #34d399; font-weight: 800; font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                    <span>✓</span> Paid DNS PIN Created Successfully!
-                </div>
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
-                    <div style="margin-bottom: 8px;"><span style="color: var(--text-muted); font-size: 12px;">Assigned PIN:</span> <b style="color: #38bdf8; font-size: 16px; font-family: monospace;">${client.username}</b></div>
-                    <div style="margin-bottom: 8px;"><span style="color: var(--text-muted); font-size: 12px;">DNS Hostname:</span> <b style="color: #fff; font-size: 14px; font-family: monospace;">${client.dns_url}</b></div>
-                    <div><span style="color: var(--text-muted); font-size: 12px;">Expires At:</span> <span style="color: #fbbf24; font-weight: 700;">${client.expire_date} (${client.duration_days} Days)</span></div>
-                </div>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="copyToClipboard('${safeDns}', this, '✓ Copied Hostname!')">📋 1. Copy Hostname</button>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="copyToClipboard('${safeWa}', this, '✓ Copied WhatsApp Msg!')">💬 2. Copy WhatsApp Msg</button>
-                    ${cleanPhone ? `<a href="${waLink}" target="_blank" class="btn btn-success btn-sm">🚀 Send to WhatsApp</a>` : ''}
-                </div>
-            `;
-            loadBalance();
-            loadOrders();
-        } else {
-            alert("❌ Generation failed: " + (data.error || "Unknown error"));
-        }
-    } catch (err) {
-        alert("Error: " + err.message);
-    } finally {
-        btn.disabled = false;
-        btn.textContent = "⚡ Generate Paid DNS PIN";
-    }
+function setCheck(id, bool) {
+    const el = document.getElementById(id);
+    if (el) el.checked = Boolean(bool);
 }
 
-// -------------------------------------------------------------
-// 🎨 Theme & Content Customizer Logic
-// -------------------------------------------------------------
+// 🎨 Theme Presets Click
 function applyColorPreset(primary, accent, bgMode) {
-    document.getElementById("custom-theme-primary").value = primary;
-    document.getElementById("custom-theme-primary-hex").value = primary;
-    document.getElementById("custom-theme-accent").value = accent;
-    document.getElementById("custom-theme-accent-hex").value = accent;
-    document.getElementById("custom-theme-bgmode").value = bgMode;
+    setVal("custom-theme-primary", primary);
+    setVal("custom-theme-primary-hex", primary);
+    setVal("custom-theme-accent", accent);
+    setVal("custom-theme-accent-hex", accent);
+    setVal("custom-theme-bgmode", bgMode);
 }
 
 function updateColorInputs(type) {
-    if (type === "primary") {
-        document.getElementById("custom-theme-primary-hex").value = document.getElementById("custom-theme-primary").value;
-    } else if (type === "accent") {
-        document.getElementById("custom-theme-accent-hex").value = document.getElementById("custom-theme-accent").value;
+    if (type === 'primary') {
+        const val = document.getElementById("custom-theme-primary").value;
+        setVal("custom-theme-primary-hex", val);
+    } else {
+        const val = document.getElementById("custom-theme-accent").value;
+        setVal("custom-theme-accent-hex", val);
     }
 }
 
 function updateColorPickers(type) {
-    if (type === "primary") {
+    if (type === 'primary') {
         const val = document.getElementById("custom-theme-primary-hex").value;
-        if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
-            document.getElementById("custom-theme-primary").value = val;
-        }
-    } else if (type === "accent") {
+        if (/^#[0-9A-Fa-f]{6}$/.test(val)) setVal("custom-theme-primary", val);
+    } else {
         const val = document.getElementById("custom-theme-accent-hex").value;
-        if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
-            document.getElementById("custom-theme-accent").value = val;
-        }
+        if (/^#[0-9A-Fa-f]{6}$/.test(val)) setVal("custom-theme-accent", val);
     }
 }
 
-// -------------------------------------------------------------
-// 🖼️ Logo & Favicon Client-Side Auto-Converter & Processors
-// -------------------------------------------------------------
-function handleLogoFileSelect(e) {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
+// ❓ FAQ Visual Manager in Admin
+function renderAdminFaqs() {
+    const container = document.getElementById("faq-items-admin-container");
+    if (!container) return;
 
-    if (!file.type.startsWith("image/")) {
-        alert("Please select a valid image file (.png, .jpg, .svg, .webp)");
+    if (currentFaqs.length === 0) {
+        container.innerHTML = `<div style="color: var(--text-muted); font-size: 12px; padding: 10px 0;">No FAQs configured. Click "+ Add FAQ Item" to create one.</div>`;
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-        const img = new Image();
-        img.onload = function() {
-            // Auto resize to max 320px width / 90px height
-            const maxW = 320;
-            const maxH = 90;
-            let targetW = img.width;
-            let targetH = img.height;
-
-            if (targetW > maxW || targetH > maxH) {
-                const ratio = Math.min(maxW / targetW, maxH / targetH);
-                targetW = Math.round(targetW * ratio);
-                targetH = Math.round(targetH * ratio);
-            }
-
-            const canvas = document.createElement("canvas");
-            canvas.width = targetW;
-            canvas.height = targetH;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(img, 0, 0, targetW, targetH);
-
-            // Compress to WebP (or PNG fallback)
-            let dataUrl = canvas.toDataURL("image/webp", 0.9);
-            if (!dataUrl || dataUrl.length > canvas.toDataURL("image/png").length) {
-                dataUrl = canvas.toDataURL("image/png");
-            }
-
-            document.getElementById("custom-sitelogo").value = dataUrl;
-            updateLogoPreview(dataUrl);
-        };
-        img.src = evt.target.result;
-    };
-    reader.readAsDataURL(file);
+    container.innerHTML = currentFaqs.map((f, i) => `
+        <div class="dynamic-item-card">
+            <div class="dynamic-item-header">
+                <span style="font-weight: 700; color: #fbbf24; font-size: 12px;">FAQ #${i + 1}</span>
+                <button type="button" class="btn-delete-item" onclick="deleteFaqItem(${i})">✕ Delete</button>
+            </div>
+            <div class="form-group">
+                <input type="text" class="form-control" placeholder="Question" value="${f.q || ''}" oninput="currentFaqs[${i}].q = this.value">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <textarea class="form-control" rows="2" placeholder="Answer" oninput="currentFaqs[${i}].a = this.value">${f.a || ''}</textarea>
+            </div>
+        </div>
+    `).join('');
 }
 
-function updateLogoFromUrl(url) {
-    updateLogoPreview(url ? url.trim() : "");
-}
+window.addFaqItem = function() {
+    currentFaqs.push({ q: "New Question?", a: "Answer here..." });
+    renderAdminFaqs();
+};
 
-function updateLogoPreview(url) {
-    const defaultSpan = document.getElementById("logo-preview-default");
-    const previewImg = document.getElementById("logo-preview-img");
-    const removeBtn = document.getElementById("btn-remove-logo");
+window.deleteFaqItem = function(idx) {
+    currentFaqs.splice(idx, 1);
+    renderAdminFaqs();
+};
 
-    if (url) {
-        previewImg.src = url;
-        previewImg.style.display = "block";
-        if (defaultSpan) defaultSpan.style.display = "none";
-        if (removeBtn) removeBtn.style.display = "block";
-    } else {
-        previewImg.src = "";
-        previewImg.style.display = "none";
-        if (defaultSpan) defaultSpan.style.display = "block";
-        if (removeBtn) removeBtn.style.display = "none";
-    }
-}
+// ⭐ Testimonials Visual Manager in Admin
+function renderAdminTestimonials() {
+    const container = document.getElementById("testimonial-items-admin-container");
+    if (!container) return;
 
-function removeCustomLogo() {
-    document.getElementById("custom-sitelogo").value = "";
-    document.getElementById("logo-file-input").value = "";
-    updateLogoPreview("");
-}
-
-function handleFaviconFileSelect(e) {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-        alert("Please select a valid image file");
+    if (currentTestimonials.length === 0) {
+        container.innerHTML = `<div style="color: var(--text-muted); font-size: 12px; padding: 10px 0;">No reviews configured. Click "+ Add Review Item" to create one.</div>`;
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-        const img = new Image();
-        img.onload = function() {
-            // Auto crop / square to 64x64 icon
-            const size = 64;
-            const canvas = document.createElement("canvas");
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext("2d");
-
-            // Center-crop to perfect square
-            const minDim = Math.min(img.width, img.height);
-            const startX = (img.width - minDim) / 2;
-            const startY = (img.height - minDim) / 2;
-
-            ctx.drawImage(img, startX, startY, minDim, minDim, 0, 0, size, size);
-            const dataUrl = canvas.toDataURL("image/png");
-
-            document.getElementById("custom-sitefavicon").value = dataUrl;
-            updateFaviconPreview(dataUrl);
-        };
-        img.src = evt.target.result;
-    };
-    reader.readAsDataURL(file);
+    container.innerHTML = currentTestimonials.map((t, i) => `
+        <div class="dynamic-item-card">
+            <div class="dynamic-item-header">
+                <span style="font-weight: 700; color: #60a5fa; font-size: 12px;">Review #${i + 1}</span>
+                <button type="button" class="btn-delete-item" onclick="deleteTestimonialItem(${i})">✕ Delete</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-bottom: 8px;">
+                <input type="text" class="form-control" placeholder="Customer Name" value="${t.name || ''}" oninput="currentTestimonials[${i}].name = this.value">
+                <input type="text" class="form-control" placeholder="Location/Country" value="${t.role || ''}" oninput="currentTestimonials[${i}].role = this.value">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <textarea class="form-control" rows="2" placeholder="Customer Review Feedback" oninput="currentTestimonials[${i}].text = this.value">${t.text || ''}</textarea>
+            </div>
+        </div>
+    `).join('');
 }
 
-function updateFaviconFromUrl(url) {
-    updateFaviconPreview(url ? url.trim() : "");
-}
+window.addTestimonialItem = function() {
+    currentTestimonials.push({ name: "Customer Name", role: "Saudi Arabia", rating: 5, text: "Great speed and instant activation!" });
+    renderAdminTestimonials();
+};
 
-function updateFaviconPreview(url) {
-    const defaultSpan = document.getElementById("favicon-preview-default");
-    const previewImg = document.getElementById("favicon-preview-img");
-    const removeBtn = document.getElementById("btn-remove-favicon");
+window.deleteTestimonialItem = function(idx) {
+    currentTestimonials.splice(idx, 1);
+    renderAdminTestimonials();
+};
 
-    if (url) {
-        previewImg.src = url;
-        previewImg.style.display = "block";
-        if (defaultSpan) defaultSpan.style.display = "none";
-        if (removeBtn) removeBtn.style.display = "block";
-    } else {
-        previewImg.src = "";
-        previewImg.style.display = "none";
-        if (defaultSpan) defaultSpan.style.display = "block";
-        if (removeBtn) removeBtn.style.display = "none";
-    }
-}
-
-function removeCustomFavicon() {
-    document.getElementById("custom-sitefavicon").value = "";
-    document.getElementById("favicon-file-input").value = "";
-    updateFaviconPreview("");
-}
-
+// 💾 Save All Customizer & Design Changes
 async function handleSaveCustomizer(e) {
-    if (e && e.preventDefault) e.preventDefault();
+    if (e) e.preventDefault();
     const btn = document.getElementById("customizer-save-btn");
-    btn.disabled = true;
-    btn.textContent = "Saving Design & Texts...";
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Saving Studio Changes...";
+    }
 
     const payload = {
-        // Colors & Theme
-        theme_primary: document.getElementById("custom-theme-primary-hex").value.trim(),
-        theme_accent: document.getElementById("custom-theme-accent-hex").value.trim(),
+        theme_primary: document.getElementById("custom-theme-primary").value,
+        theme_accent: document.getElementById("custom-theme-accent").value,
         theme_bg_mode: document.getElementById("custom-theme-bgmode").value,
-        
-        // Brand, Logo & Identity
+
+        show_notice: document.getElementById("toggle-notice").checked,
+        show_hero: document.getElementById("toggle-hero").checked,
+        show_stats: document.getElementById("toggle-stats").checked,
+        show_features: document.getElementById("toggle-features").checked,
+        show_pricing: document.getElementById("toggle-pricing").checked,
+        show_checker: document.getElementById("toggle-checker").checked,
+        show_testimonials: document.getElementById("toggle-testimonials").checked,
+        show_faq: document.getElementById("toggle-faq").checked,
+        show_guide: document.getElementById("toggle-guide").checked,
+        show_custom_html: document.getElementById("toggle-customhtml").checked,
+
         site_name: document.getElementById("custom-sitename").value.trim(),
         site_badge: document.getElementById("custom-sitebadge").value.trim(),
         site_logo: document.getElementById("custom-sitelogo").value.trim(),
         site_favicon: document.getElementById("custom-sitefavicon").value.trim(),
-        tagline: document.getElementById("custom-tagline").value.trim(),
+        owner_name: document.getElementById("custom-ownername").value.trim(),
 
-        // Hero Content
+        notice: document.getElementById("custom-notice").value.trim(),
         hero_pill_text: document.getElementById("custom-heropill").value.trim(),
         hero_title_line1: document.getElementById("custom-herotitle1").value.trim(),
         hero_title_line2: document.getElementById("custom-herotitle2").value.trim(),
@@ -652,138 +649,334 @@ async function handleSaveCustomizer(e) {
         btn_hero_buy_text: document.getElementById("custom-btnherobuy").value.trim(),
         btn_hero_check_text: document.getElementById("custom-btnherocheck").value.trim(),
 
-        // Notice Bar
-        notice_enabled: document.getElementById("custom-noticeenabled").checked,
-        notice: document.getElementById("custom-notice").value.trim(),
+        faqs: currentFaqs,
+        testimonials: currentTestimonials,
 
-        // Section Titles & Buttons
-        pricing_title: document.getElementById("custom-pricingtitle").value.trim(),
-        btn_plan_card_text: document.getElementById("custom-btnplancard").value.trim(),
-        checker_title: document.getElementById("custom-checkertitle").value.trim(),
-        btn_checker_text: document.getElementById("custom-btnchecker").value.trim(),
-        checker_input_placeholder: document.getElementById("custom-checkerplaceholder").value.trim(),
+        custom_html: document.getElementById("custom-html-code").value.trim(),
+        custom_css: document.getElementById("custom-css-code").value.trim(),
+        custom_js: document.getElementById("custom-js-code").value.trim(),
 
-        // Floating Support & Links
-        floating_support_enabled: document.getElementById("custom-floatingsupport").checked,
         support_whatsapp: document.getElementById("custom-whatsapp").value.trim(),
-        support_whatsapp_msg: document.getElementById("custom-whatsappmsg").value.trim(),
         support_telegram: document.getElementById("custom-telegram").value.trim(),
-        owner_name: document.getElementById("custom-ownername").value.trim()
+        support_whatsapp_msg: document.getElementById("custom-whatsappmsg").value.trim()
     };
 
     try {
         const res = await fetch("/api/admin/settings", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${authToken}`
-            },
+            headers: getHeaders(),
             body: JSON.stringify(payload)
         });
-        const data = await res.json();
-        if (data.success) {
-            alert("🎨 Store design, logo & custom texts saved live to your D1 Database!");
-            loadSettings();
+        const json = await res.json();
+
+        if (json.success) {
+            alert("🎉 Design studio and section settings saved successfully!");
         } else {
-            alert("❌ Failed to save: " + data.error);
+            alert("❌ " + json.error);
+        }
+    } catch (err) {
+        alert("Save failed: " + err.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = "💾 Save All Page & Theme Changes";
+        }
+    }
+}
+
+// ----------------------------------------------------
+// 4. Discount Coupons Management
+// ----------------------------------------------------
+async function loadCoupons() {
+    try {
+        const res = await fetch("/api/admin/coupons", { headers: getHeaders() });
+        const json = await res.json();
+        const tbody = document.getElementById("coupons-tbody");
+        if (!tbody) return;
+
+        if (!json.success || !json.data || json.data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:20px;">No discount coupons created yet.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = json.data.map(c => `
+            <tr>
+                <td><b style="color:#38bdf8; font-family:monospace; font-size:14px;">${c.code}</b></td>
+                <td><b>${c.discount_val}${c.discount_type === 'percent' ? '%' : ' ' + (cachedSettings.currency || 'SAR')}</b></td>
+                <td>${c.used_count} / ${c.max_uses > 0 ? c.max_uses : '∞'}</td>
+                <td><span class="badge ${c.status === 'active' ? 'badge-approved' : 'badge-rejected'}">${c.status}</span></td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="deleteCoupon(${c.id})">✕ Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error("Coupons load error:", e);
+    }
+}
+
+async function handleCreateCoupon(e) {
+    e.preventDefault();
+    const btn = document.getElementById("btn-save-coupon");
+    btn.disabled = true;
+    btn.textContent = "Creating...";
+
+    const payload = {
+        code: document.getElementById("coupon-code").value.trim().toUpperCase(),
+        discount_type: document.getElementById("coupon-type").value,
+        discount_val: parseFloat(document.getElementById("coupon-val").value),
+        min_amount: parseFloat(document.getElementById("coupon-min").value) || 0,
+        max_uses: parseInt(document.getElementById("coupon-maxuses").value, 10) || 0,
+        expires_at: document.getElementById("coupon-expires").value || null,
+        status: "active"
+    };
+
+    try {
+        const res = await fetch("/api/admin/coupons", {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+
+        if (json.success) {
+            alert("🎉 Coupon created successfully!");
+            document.getElementById("coupon-code").value = "";
+            document.getElementById("coupon-val").value = "";
+            loadCoupons();
+        } else {
+            alert("❌ " + json.error);
         }
     } catch (err) {
         alert("Error: " + err.message);
     } finally {
         btn.disabled = false;
-        btn.textContent = "💾 Save All Customizer & Design Changes";
+        btn.textContent = "✨ Create Coupon";
     }
 }
 
-// -------------------------------------------------------------
-// Settings Load
-// -------------------------------------------------------------
-async function loadSettings() {
+async function deleteCoupon(id) {
+    if (!confirm("Are you sure you want to delete this coupon?")) return;
+
     try {
-        const res = await fetch("/api/admin/settings", {
-            headers: { "Authorization": `Bearer ${authToken}` }
+        const res = await fetch(`/api/admin/coupons?id=${id}`, {
+            method: "DELETE",
+            headers: getHeaders()
         });
         const json = await res.json();
-        if (json.success && json.data) {
-            const s = json.data;
-
-            // Core Settings Tab
-            if (s.reseller_api_key) document.getElementById("setting-apikey").value = s.reseller_api_key;
-            if (s.main_api_url) document.getElementById("setting-apiurl").value = s.main_api_url;
-
-            // Email & OTP Tab
-            if (s.email_provider) document.getElementById("setting-emailprovider").value = s.email_provider;
-            if (s.brevo_api_key) document.getElementById("setting-brevoapikey").value = s.brevo_api_key;
-            if (s.brevo_sender_email) document.getElementById("setting-brevosenderemail").value = s.brevo_sender_email;
-            if (s.brevo_sender_name) document.getElementById("setting-brevosendername").value = s.brevo_sender_name;
-            if (s.smtp_gmail_email) document.getElementById("setting-gmailemail").value = s.smtp_gmail_email;
-            if (s.smtp_gmail_app_password) document.getElementById("setting-gmailapppassword").value = s.smtp_gmail_app_password;
-            if (s.smtp_sender_name) document.getElementById("setting-gmailsendername").value = s.smtp_sender_name;
-            if (s.turnstile_site_key) document.getElementById("setting-turnstilesitekey").value = s.turnstile_site_key;
-            if (s.turnstile_secret_key) document.getElementById("setting-turnstilesecretkey").value = s.turnstile_secret_key;
-            toggleEmailProviderFields();
-
-            // Customizer Tab Fields
-            if (s.theme_primary) {
-                document.getElementById("custom-theme-primary").value = s.theme_primary;
-                document.getElementById("custom-theme-primary-hex").value = s.theme_primary;
-            }
-            if (s.theme_accent) {
-                document.getElementById("custom-theme-accent").value = s.theme_accent;
-                document.getElementById("custom-theme-accent-hex").value = s.theme_accent;
-            }
-            if (s.theme_bg_mode) document.getElementById("custom-theme-bgmode").value = s.theme_bg_mode;
-
-            if (s.site_name) document.getElementById("custom-sitename").value = s.site_name;
-            if (s.site_badge) document.getElementById("custom-sitebadge").value = s.site_badge;
-            if (s.tagline) document.getElementById("custom-tagline").value = s.tagline;
-
-            // Logo & Favicon
-            if (s.site_logo) {
-                document.getElementById("custom-sitelogo").value = s.site_logo;
-                updateLogoPreview(s.site_logo);
-            } else {
-                removeCustomLogo();
-            }
-            if (s.site_favicon) {
-                document.getElementById("custom-sitefavicon").value = s.site_favicon;
-                updateFaviconPreview(s.site_favicon);
-            } else {
-                removeCustomFavicon();
-            }
-
-            if (s.hero_pill_text) document.getElementById("custom-heropill").value = s.hero_pill_text;
-            if (s.hero_title_line1) document.getElementById("custom-herotitle1").value = s.hero_title_line1;
-            if (s.hero_title_line2) document.getElementById("custom-herotitle2").value = s.hero_title_line2;
-            if (s.hero_subtitle) document.getElementById("custom-herosubtitle").value = s.hero_subtitle;
-            if (s.btn_hero_buy_text) document.getElementById("custom-btnherobuy").value = s.btn_hero_buy_text;
-            if (s.btn_hero_check_text) document.getElementById("custom-btnherocheck").value = s.btn_hero_check_text;
-
-            document.getElementById("custom-noticeenabled").checked = s.notice_enabled !== undefined ? Boolean(s.notice_enabled) : true;
-            if (s.notice) document.getElementById("custom-notice").value = s.notice;
-
-            if (s.pricing_title) document.getElementById("custom-pricingtitle").value = s.pricing_title;
-            if (s.btn_plan_card_text) document.getElementById("custom-btnplancard").value = s.btn_plan_card_text;
-            if (s.checker_title) document.getElementById("custom-checkertitle").value = s.checker_title;
-            if (s.btn_checker_text) document.getElementById("custom-btnchecker").value = s.btn_checker_text;
-            if (s.checker_input_placeholder) document.getElementById("custom-checkerplaceholder").value = s.checker_input_placeholder;
-
-            document.getElementById("custom-floatingsupport").checked = s.floating_support_enabled !== undefined ? Boolean(s.floating_support_enabled) : true;
-            if (s.support_whatsapp) document.getElementById("custom-whatsapp").value = s.support_whatsapp;
-            if (s.support_whatsapp_msg) document.getElementById("custom-whatsappmsg").value = s.support_whatsapp_msg;
-            if (s.support_telegram) document.getElementById("custom-telegram").value = s.support_telegram;
-            if (s.owner_name) document.getElementById("custom-ownername").value = s.owner_name;
+        if (json.success) {
+            loadCoupons();
+        } else {
+            alert("❌ " + json.error);
         }
-    } catch (_) {}
+    } catch (e) {
+        alert("Error: " + e.message);
+    }
 }
 
-function toggleEmailProviderFields() {
-    const val = document.getElementById("setting-emailprovider").value;
-    const boxBrevo = document.getElementById("box-brevo");
-    const boxGmail = document.getElementById("box-gmail");
+// ----------------------------------------------------
+// 5. Staff & Sub-Reseller Management
+// ----------------------------------------------------
+async function loadStaff() {
+    try {
+        const res = await fetch("/api/admin/staff", { headers: getHeaders() });
+        const json = await res.json();
+        const tbody = document.getElementById("staff-tbody");
+        if (!tbody) return;
 
-    if (boxBrevo) boxBrevo.style.display = (val === "brevo") ? "block" : "none";
-    if (boxGmail) boxGmail.style.display = (val === "gmail_smtp") ? "block" : "none";
+        if (!json.success || !json.data || json.data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:20px;">No staff or agent accounts yet.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = json.data.map(s => `
+            <tr>
+                <td>
+                    <b style="color:#fff;">${s.name}</b>
+                    <div style="font-size:11px; color:#38bdf8;">@${s.username}</div>
+                </td>
+                <td><span style="text-transform:uppercase; font-weight:700; color:#cbd5e1; font-size:11px;">${s.role}</span></td>
+                <td><span class="badge badge-approved">${s.status}</span></td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="deleteStaff(${s.id})">✕ Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error("Staff load error:", e);
+    }
+}
+
+async function handleCreateStaff(e) {
+    e.preventDefault();
+    const btn = document.getElementById("btn-save-staff");
+    btn.disabled = true;
+    btn.textContent = "Creating Account...";
+
+    const payload = {
+        name: document.getElementById("staff-name").value.trim(),
+        username: document.getElementById("staff-username").value.trim(),
+        password: document.getElementById("staff-password").value.trim(),
+        role: document.getElementById("staff-role").value
+    };
+
+    try {
+        const res = await fetch("/api/admin/staff", {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+
+        if (json.success) {
+            alert("🎉 " + json.message);
+            document.getElementById("staff-name").value = "";
+            document.getElementById("staff-username").value = "";
+            document.getElementById("staff-password").value = "";
+            loadStaff();
+        } else {
+            alert("❌ " + json.error);
+        }
+    } catch (err) {
+        alert("Error: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "✨ Create Staff Member";
+    }
+}
+
+async function deleteStaff(id) {
+    if (!confirm("Are you sure you want to delete this staff member?")) return;
+
+    try {
+        const res = await fetch(`/api/admin/staff?id=${id}`, {
+            method: "DELETE",
+            headers: getHeaders()
+        });
+        const json = await res.json();
+        if (json.success) {
+            loadStaff();
+        } else {
+            alert("❌ " + json.error);
+        }
+    } catch (e) {
+        alert("Error: " + e.message);
+    }
+}
+
+// ----------------------------------------------------
+// 6. Test PIN & Full PIN Generators
+// ----------------------------------------------------
+async function handleGenerateTestPin(e) {
+    e.preventDefault();
+    const btn = document.getElementById("test-pin-submit-btn");
+    const resultBox = document.getElementById("test-pin-result");
+
+    btn.disabled = true;
+    btn.textContent = "Generating 30-Min PIN...";
+    resultBox.style.display = "none";
+
+    const payload = {
+        phone: document.getElementById("test-pin-phone").value.trim(),
+        note: document.getElementById("test-pin-note").value.trim()
+    };
+
+    try {
+        const res = await fetch("/api/admin/test-pin", {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+
+        resultBox.style.display = "block";
+        if (json.success && json.data) {
+            const d = json.data;
+            resultBox.innerHTML = `
+                <div style="color: #34d399; font-weight: 800; font-size: 16px; margin-bottom: 8px;">🎉 30-Min Test PIN Generated!</div>
+                <div style="font-size: 13px; color: #cbd5e1; line-height: 1.7;">
+                    <div>👤 <b>PIN / User:</b> <code style="color: #38bdf8; font-size: 14px;">${d.client_id}</code></div>
+                    <div>🌐 <b>DNS Host:</b> <code>${d.dns_url}</code></div>
+                    <div>⏳ <b>Validity:</b> 30 Minutes (Expires: ${d.expire_date || 'In 30 mins'})</div>
+                </div>
+                <div style="margin-top: 14px; display: flex; gap: 8px;">
+                    <button class="btn btn-primary btn-sm" onclick="navigator.clipboard.writeText('${d.dns_url}').then(() => alert('Copied: ${d.dns_url}'))">
+                        📋 Copy Hostname
+                    </button>
+                    ${payload.phone ? `
+                        <button class="btn btn-success btn-sm" onclick="shareWhatsApp('TEST', '${payload.phone}', '${d.client_id}', '${d.dns_url}', '0.5 Hours')">
+                            💬 Send via WhatsApp
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+            loadBalance();
+        } else {
+            resultBox.innerHTML = `<div style="color: #f87171;">❌ ${json.error || "Failed to generate test PIN"}</div>`;
+        }
+    } catch (err) {
+        resultBox.style.display = "block";
+        resultBox.innerHTML = `<div style="color: #f87171;">Error: ${err.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "⚡ Generate 30-Min Test PIN";
+    }
+}
+
+async function handleManualGenerate(e) {
+    e.preventDefault();
+    const btn = document.getElementById("gen-submit-btn");
+    const resultBox = document.getElementById("gen-result");
+
+    btn.disabled = true;
+    btn.textContent = "Generating Paid PIN...";
+    resultBox.style.display = "none";
+
+    const payload = {
+        phone: document.getElementById("gen-phone").value.trim(),
+        duration_days: parseInt(document.getElementById("gen-duration").value, 10),
+        note: document.getElementById("gen-note").value.trim()
+    };
+
+    try {
+        const res = await fetch("/api/admin/generate", {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+
+        resultBox.style.display = "block";
+        if (json.success && json.data) {
+            const d = json.data;
+            resultBox.innerHTML = `
+                <div style="color: #34d399; font-weight: 800; font-size: 16px; margin-bottom: 8px;">🎉 Paid DNS PIN Generated!</div>
+                <div style="font-size: 13px; color: #cbd5e1; line-height: 1.7;">
+                    <div>👤 <b>PIN / User:</b> <code style="color: #38bdf8; font-size: 14px;">${d.client_id}</code></div>
+                    <div>🌐 <b>DNS Host:</b> <code>${d.dns_url}</code></div>
+                    <div>⏳ <b>Validity:</b> ${payload.duration_days} Days (Expires: ${d.expire_date || 'Active'})</div>
+                </div>
+            `;
+            loadBalance();
+        } else {
+            resultBox.innerHTML = `<div style="color: #f87171;">❌ ${json.error}</div>`;
+        }
+    } catch (err) {
+        resultBox.style.display = "block";
+        resultBox.innerHTML = `<div style="color: #f87171;">Error: ${err.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "⚡ Generate Paid DNS PIN";
+    }
+}
+
+// ----------------------------------------------------
+// 7. Email Settings & Live Tester
+// ----------------------------------------------------
+function toggleEmailProviderFields() {
+    const prov = document.getElementById("setting-emailprovider").value;
+    const brevoBox = document.getElementById("box-brevo");
+    if (brevoBox) brevoBox.style.display = (prov === "brevo") ? "block" : "none";
 }
 
 async function handleSaveEmailSettings(e) {
@@ -792,27 +985,20 @@ async function handleSaveEmailSettings(e) {
         email_provider: document.getElementById("setting-emailprovider").value,
         brevo_api_key: document.getElementById("setting-brevoapikey").value.trim(),
         brevo_sender_email: document.getElementById("setting-brevosenderemail").value.trim(),
-        brevo_sender_name: document.getElementById("setting-brevosendername").value.trim(),
-        smtp_gmail_email: document.getElementById("setting-gmailemail").value.trim(),
-        smtp_gmail_app_password: document.getElementById("setting-gmailapppassword").value.trim(),
-        smtp_sender_name: document.getElementById("setting-gmailsendername").value.trim()
+        brevo_sender_name: document.getElementById("setting-brevosendername").value.trim()
     };
 
     try {
         const res = await fetch("/api/admin/settings", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${authToken}`
-            },
+            headers: getHeaders(),
             body: JSON.stringify(payload)
         });
-        const data = await res.json();
-        if (data.success) {
-            alert("✅ Email & OTP settings saved successfully to your D1 Database!");
-            loadSettings();
+        const json = await res.json();
+        if (json.success) {
+            alert("🎉 Email & notification settings saved!");
         } else {
-            alert("❌ Failed to save: " + data.error);
+            alert("❌ " + json.error);
         }
     } catch (err) {
         alert("Error: " + err.message);
@@ -820,83 +1006,76 @@ async function handleSaveEmailSettings(e) {
 }
 
 async function handleSendTestEmail() {
-    const email = document.getElementById("test-email-recipient").value.trim();
-    const statusBox = document.getElementById("test-email-status");
     const btn = document.getElementById("test-email-btn");
+    const status = document.getElementById("test-email-status");
+    const email = document.getElementById("test-email-recipient").value.trim();
 
-    if (!email || !email.includes("@")) {
-        alert("Please enter a valid recipient email");
+    if (!email) {
+        alert("Please enter a recipient email address");
         return;
     }
 
     btn.disabled = true;
-    btn.textContent = "Sending Test OTP...";
-    statusBox.style.display = "block";
-    statusBox.style.color = "#fbbf24";
-    statusBox.textContent = "Dispatching test email...";
+    btn.textContent = "Sending...";
+    status.style.display = "none";
 
     try {
         const res = await fetch("/api/admin/test-email", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${authToken}`
-            },
-            body: JSON.stringify({ test_email: email })
+            headers: getHeaders(),
+            body: JSON.stringify({ email: email })
         });
-        const data = await res.json();
+        const json = await res.json();
 
-        if (data.success) {
-            statusBox.style.color = "#34d399";
-            statusBox.innerHTML = `✅ ${data.message}`;
+        status.style.display = "block";
+        if (json.success) {
+            status.style.color = "#34d399";
+            status.textContent = `✓ Test email sent successfully to ${email}! Check inbox.`;
         } else {
-            statusBox.style.color = "#f87171";
-            statusBox.innerHTML = `❌ ${data.error}`;
+            status.style.color = "#f87171";
+            status.textContent = `❌ Failed: ${json.error || "Check your credentials"}`;
         }
-    } catch (err) {
-        statusBox.style.color = "#f87171";
-        statusBox.textContent = "Error: " + err.message;
+    } catch (e) {
+        status.style.display = "block";
+        status.style.color = "#f87171";
+        status.textContent = "Error: " + e.message;
     } finally {
         btn.disabled = false;
-        btn.textContent = "Send Test OTP";
+        btn.textContent = "Send Test Email";
     }
 }
 
+// ----------------------------------------------------
+// 8. Core API & Alert Settings Save
+// ----------------------------------------------------
 async function handleSaveSettings(e) {
     e.preventDefault();
     const payload = {
         reseller_api_key: document.getElementById("setting-apikey").value.trim(),
         main_api_url: document.getElementById("setting-apiurl").value.trim(),
+        telegram_bot_token: document.getElementById("setting-telegrambottoken").value.trim(),
+        telegram_chat_id: document.getElementById("setting-telegramchatid").value.trim(),
+        new_password: document.getElementById("setting-newpassword").value.trim(),
         turnstile_site_key: document.getElementById("setting-turnstilesitekey").value.trim(),
         turnstile_secret_key: document.getElementById("setting-turnstilesecretkey").value.trim()
     };
 
-    const newPass = document.getElementById("setting-newpassword").value.trim();
-    if (newPass) {
-        payload.new_password = newPass;
-    }
-
     try {
         const res = await fetch("/api/admin/settings", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${authToken}`
-            },
+            headers: getHeaders(),
             body: JSON.stringify(payload)
         });
-        const data = await res.json();
-        if (data.success) {
-            if (newPass) {
-                authToken = btoa(newPass + ":" + Date.now());
-                localStorage.setItem("store_admin_token", authToken);
+        const json = await res.json();
+        if (json.success) {
+            alert("🎉 Core settings saved successfully!");
+            if (payload.new_password) {
+                adminPassword = payload.new_password;
+                localStorage.setItem("admin_password", adminPassword);
                 document.getElementById("setting-newpassword").value = "";
             }
-            alert("✅ Store & API settings saved successfully to your D1 Database!");
-            loadSettings();
-            loadBalance();
         } else {
-            alert("❌ Failed to save: " + data.error);
+            alert("❌ " + json.error);
         }
     } catch (err) {
         alert("Error: " + err.message);
