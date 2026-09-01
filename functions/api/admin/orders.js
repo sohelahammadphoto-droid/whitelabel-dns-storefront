@@ -1,5 +1,5 @@
-// functions/api/admin/orders.js — Reseller Order Management API
 import { initDb, verifyAuth, getResellerApiKey, getMainApiUrl, json, handleOptions } from "../_db.js";
+import { sendOrderApprovedEmail } from "../_email.js";
 
 export async function onRequestOptions() {
     return handleOptions();
@@ -131,6 +131,21 @@ export async function onRequestPost(context) {
                 `🍏 *iOS 1-Click Profile:* ${clientData.ios_profile_url || `https://dnshub.pages.dev/api/public/ios-profile?username=${clientId}`}\n\n` +
                 `🔥 Ultra-Fast Ad-Free Private DNS is now active for your device!`
             );
+
+            // Automated Email Dispatch to customer
+            if (order.customer_email) {
+                try {
+                    await sendOrderApprovedEmail(env, order.customer_email, order.customer_name, {
+                        order_id: order.order_id,
+                        plan_name: order.plan_name,
+                        client_id: clientId,
+                        dns_url: dnsUrl,
+                        expire_date: expireDate
+                    });
+                } catch (emailErr) {
+                    console.error("Email dispatch failed on approval:", emailErr);
+                }
+            }
 
             return json({
                 success: true,
