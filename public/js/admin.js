@@ -23,7 +23,7 @@ async function checkSetupStatus() {
     try {
         const res = await fetch("/api/admin/setup");
         const data = await res.json();
-        if (data.needsSetup) {
+        if (data.needsSetup || data.needs_setup) {
             document.getElementById("setup-screen").style.display = "flex";
             document.getElementById("login-screen").style.display = "none";
             document.getElementById("admin-app").style.display = "none";

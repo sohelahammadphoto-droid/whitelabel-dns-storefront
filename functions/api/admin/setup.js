@@ -15,6 +15,7 @@ export async function onRequestGet(context) {
 
     return json({
         success: true,
+        needsSetup: !existingPassword,
         needs_setup: !existingPassword,
         has_database: hasDatabase
     });
