@@ -112,7 +112,7 @@ export async function onRequestPost(context) {
 
             const clientData = apiData.data || {};
             const clientId = clientData.client_id || clientData.username || username;
-            const dnsUrl = clientData.dot_domain || `${clientId}.dns.sohel.pp.ua`;
+            const dnsUrl = clientData.dns_url || clientData.dot_domain || clientData.dot_host || clientData.android_dns || `${clientId}.dnsbd.pp.ua`;
             const expireDate = clientData.expires_at || clientData.expire_date || "";
 
             // Update order in D1
@@ -122,14 +122,15 @@ export async function onRequestPost(context) {
                 WHERE order_id = ?
             `).bind(clientId, dnsUrl, expireDate, order_id).run();
 
-            const waMessage =
+            const waMessage = clientData.whatsapp_share_text || clientData.whatsapp_message || (
                 `🎉 *DNS ACTIVATION COMPLETED* 🎉\n\n` +
                 `👤 *Username / PIN:* \`${clientId}\`\n` +
                 `🌐 *Private DNS Address:* \`${dnsUrl}\`\n` +
                 `⏳ *Validity:* *${order.duration_days || 30} Days* (Expires: ${expireDate})\n\n` +
                 `📲 *Android Setup:* Settings ➔ Connections ➔ Private DNS ➔ Specified DNS ➔ Enter: \`${dnsUrl}\`\n` +
-                `🍏 *iOS 1-Click Profile:* https://dnshub.pages.dev/api/public/ios-profile?username=${clientId}\n\n` +
-                `🔥 Ultra-Fast Ad-Free Private DNS is now active for your device!`;
+                `🍏 *iOS 1-Click Profile:* ${clientData.ios_profile_url || `https://dnshub.pages.dev/api/public/ios-profile?username=${clientId}`}\n\n` +
+                `🔥 Ultra-Fast Ad-Free Private DNS is now active for your device!`
+            );
 
             return json({
                 success: true,
