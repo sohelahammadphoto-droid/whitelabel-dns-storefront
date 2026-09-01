@@ -20,6 +20,8 @@ export async function onRequestGet(context) {
         // --- 1. Branding ---
         site_name: s.site_name || env.SITE_NAME || "UltraDNS Pro",
         site_badge: s.site_badge || "PRO",
+        site_logo: s.site_logo || "",
+        site_favicon: s.site_favicon || "",
         owner_name: s.owner_name || env.OWNER_NAME || "Premium Services",
         tagline: s.tagline || env.TAGLINE || "High-Speed Private DNS for Banking & Global Access",
         currency: s.currency || env.CURRENCY || "SAR",
