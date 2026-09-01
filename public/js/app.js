@@ -1,4 +1,4 @@
-// public/js/app.js — Customer Storefront & Account Dashboard Logic
+// public/js/app.js — Dynamic Storefront Theme, Content & Mobile Logic
 let siteConfig = null;
 let currentPlan = null;
 let customerToken = localStorage.getItem("customer_token") || "";
@@ -6,13 +6,30 @@ let customerUser = JSON.parse(localStorage.getItem("customer_user") || "null");
 const antiBotMountedAt = Date.now();
 
 document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("footer-year").textContent = new Date().getFullYear();
+    const footerYear = document.getElementById("footer-year");
+    if (footerYear) footerYear.textContent = new Date().getFullYear();
+    
     loadSiteConfig();
     renderNavbarAuth();
     if (customerToken) {
         fetchCustomerData();
     }
 });
+
+// Mobile Navigation Toggle
+window.toggleMobileMenu = function() {
+    const drawer = document.getElementById("mobile-drawer");
+    if (drawer) {
+        drawer.classList.toggle("active");
+    }
+};
+
+window.closeMobileMenu = function() {
+    const drawer = document.getElementById("mobile-drawer");
+    if (drawer) {
+        drawer.classList.remove("active");
+    }
+};
 
 // 🛡️ Client-Side Invisible Anti-Bot Token Generator
 async function generateAntiBotPayload() {
@@ -38,13 +55,14 @@ async function generateAntiBotPayload() {
     };
 }
 
-// Load dynamic config from D1 Database
+// Load dynamic config from D1 Database & Inject Live Theme Tokens
 async function loadSiteConfig() {
     try {
         const res = await fetch("/api/config");
         const json = await res.json();
         if (json.success && json.data) {
             siteConfig = json.data;
+            applyThemeTokens();
             renderConfig();
         }
     } catch (e) {
@@ -52,25 +70,132 @@ async function loadSiteConfig() {
     }
 }
 
+// 🎨 Live CSS Variables & Theme Injection
+function applyThemeTokens() {
+    if (!siteConfig) return;
+    const root = document.documentElement;
+
+    if (siteConfig.theme_primary) {
+        root.style.setProperty("--primary", siteConfig.theme_primary);
+        root.style.setProperty("--border-glow", `${siteConfig.theme_primary}4D`);
+    }
+    if (siteConfig.theme_primary_hover) {
+        root.style.setProperty("--primary-hover", siteConfig.theme_primary_hover);
+    }
+    if (siteConfig.theme_accent) {
+        root.style.setProperty("--accent-cyan", siteConfig.theme_accent);
+    }
+    if (siteConfig.theme_bg_mode) {
+        document.body.dataset.bg = siteConfig.theme_bg_mode;
+    }
+}
+
+// Render dynamic texts, hero titles, buttons and announcements
 function renderConfig() {
     if (!siteConfig) return;
 
+    // --- 1. Branding ---
     if (siteConfig.site_name) {
-        document.getElementById("site-name").textContent = siteConfig.site_name;
+        const el = document.getElementById("site-name");
+        if (el) el.textContent = siteConfig.site_name;
         document.title = `${siteConfig.site_name} — High Speed & Banking DNS Access`;
     }
-    if (siteConfig.tagline) {
-        document.getElementById("tagline").textContent = siteConfig.tagline;
-    }
-    if (siteConfig.notice) {
-        document.getElementById("notice-text").textContent = siteConfig.notice;
+    if (siteConfig.site_badge) {
+        const el = document.getElementById("site-badge");
+        if (el) el.textContent = siteConfig.site_badge;
     }
     if (siteConfig.owner_name) {
-        document.getElementById("footer-owner").textContent = siteConfig.owner_name;
+        const el = document.getElementById("footer-owner");
+        if (el) el.textContent = siteConfig.owner_name;
     }
-    if (siteConfig.support_whatsapp) {
-        const cleanWa = siteConfig.support_whatsapp.replace(/[^0-9]/g, "");
-        document.getElementById("whatsapp-link").href = `https://wa.me/${cleanWa}?text=Hello,%20I%20need%20assistance%20with%20Private%20DNS`;
+
+    // --- 2. Notice Announcement Bar ---
+    const noticeWrap = document.getElementById("notice-bar-wrap");
+    const noticeText = document.getElementById("notice-text");
+    if (noticeWrap && noticeText) {
+        if (siteConfig.notice_enabled === false) {
+            noticeWrap.style.display = "none";
+        } else {
+            noticeWrap.style.display = "block";
+            if (siteConfig.notice) noticeText.textContent = siteConfig.notice;
+        }
+    }
+
+    // --- 3. Hero Section ---
+    if (siteConfig.hero_pill_text) {
+        const el = document.getElementById("hero-pill");
+        if (el) el.textContent = siteConfig.hero_pill_text;
+    }
+    if (siteConfig.hero_title_line1) {
+        const el = document.getElementById("hero-title-line1");
+        if (el) el.textContent = siteConfig.hero_title_line1;
+    }
+    if (siteConfig.hero_title_line2) {
+        const el = document.getElementById("hero-title-line2");
+        if (el) el.textContent = siteConfig.hero_title_line2;
+    }
+    if (siteConfig.hero_subtitle) {
+        const el = document.getElementById("hero-subtitle");
+        if (el) el.textContent = siteConfig.hero_subtitle;
+    }
+    if (siteConfig.btn_hero_buy_text) {
+        const el = document.getElementById("btn-hero-buy");
+        if (el) el.textContent = siteConfig.btn_hero_buy_text;
+    }
+    if (siteConfig.btn_hero_check_text) {
+        const el = document.getElementById("btn-hero-check");
+        if (el) el.textContent = siteConfig.btn_hero_check_text;
+    }
+
+    // --- 4. Features Section ---
+    if (siteConfig.features_title) {
+        const el = document.getElementById("features-title");
+        if (el) el.textContent = siteConfig.features_title;
+    }
+    if (siteConfig.features_subtitle) {
+        const el = document.getElementById("features-subtitle");
+        if (el) el.textContent = siteConfig.features_subtitle;
+    }
+
+    // --- 5. Pricing Section ---
+    if (siteConfig.pricing_title) {
+        const el = document.getElementById("pricing-title");
+        if (el) el.textContent = siteConfig.pricing_title;
+    }
+    if (siteConfig.pricing_subtitle) {
+        const el = document.getElementById("pricing-subtitle");
+        if (el) el.textContent = siteConfig.pricing_subtitle;
+    }
+
+    // --- 6. Status Checker ---
+    if (siteConfig.checker_title) {
+        const el = document.getElementById("checker-title");
+        if (el) el.textContent = siteConfig.checker_title;
+    }
+    if (siteConfig.checker_subtitle) {
+        const el = document.getElementById("checker-subtitle");
+        if (el) el.textContent = siteConfig.checker_subtitle;
+    }
+    if (siteConfig.checker_input_placeholder) {
+        const el = document.getElementById("checker-query");
+        if (el) el.placeholder = siteConfig.checker_input_placeholder;
+    }
+    if (siteConfig.btn_checker_text) {
+        const el = document.getElementById("btn-checker");
+        if (el) el.textContent = siteConfig.btn_checker_text;
+    }
+
+    // --- 7. Floating WhatsApp Support Button ---
+    const waLink = document.getElementById("whatsapp-link");
+    if (waLink) {
+        if (siteConfig.floating_support_enabled !== false && siteConfig.support_whatsapp) {
+            const cleanWa = siteConfig.support_whatsapp.replace(/[^0-9]/g, "");
+            const customMsg = encodeURIComponent(siteConfig.support_whatsapp_msg || "Hello, I need assistance with Private DNS");
+            waLink.href = `https://api.whatsapp.com/send?phone=${cleanWa}&text=${customMsg}`;
+            waLink.style.display = "flex";
+        } else {
+            waLink.style.display = "none";
+        }
     }
 
     renderPlans();
@@ -79,7 +204,9 @@ function renderConfig() {
 
 function renderPlans() {
     const container = document.getElementById("plans-container");
-    if (!siteConfig || !siteConfig.plans) return;
+    if (!siteConfig || !siteConfig.plans || !container) return;
+
+    const btnText = siteConfig.btn_plan_card_text || "⚡ Get Instant Access";
 
     container.innerHTML = siteConfig.plans.map(p => `
         <div class="pricing-card ${p.popular ? 'popular' : ''}">
@@ -94,7 +221,7 @@ function renderPlans() {
                 ${(p.features || []).map(f => `<li><span class="check-icon">✓</span> ${f}</li>`).join('')}
             </ul>
             <button class="plan-btn ${p.popular ? 'plan-btn-popular' : ''}" onclick="openOrderModal('${p.id}')">
-                ⚡ Get Instant Access
+                ${btnText}
             </button>
         </div>
     `).join('');
@@ -102,7 +229,7 @@ function renderPlans() {
 
 function renderPaymentMethods() {
     const select = document.getElementById("order-payment-method");
-    if (!siteConfig || !siteConfig.payment_methods) return;
+    if (!siteConfig || !siteConfig.payment_methods || !select) return;
 
     select.innerHTML = siteConfig.payment_methods.map(m => `
         <option value="${m.id}">${m.name} (${m.number})</option>
@@ -112,17 +239,21 @@ function renderPaymentMethods() {
 
 function updatePaymentInstruction() {
     const select = document.getElementById("order-payment-method");
-    if (!siteConfig || !siteConfig.payment_methods) return;
+    if (!siteConfig || !siteConfig.payment_methods || !select) return;
 
     const selected = siteConfig.payment_methods.find(m => m.id === select.value) || siteConfig.payment_methods[0];
     if (selected) {
-        document.getElementById("payment-instruction-text").textContent = selected.instructions || `Send payment to ${selected.name} number below and enter TrxID.`;
-        document.getElementById("payment-number-display").textContent = `${selected.number} (${selected.account_name || 'Personal'})`;
+        const textEl = document.getElementById("payment-instruction-text");
+        const numEl = document.getElementById("payment-number-display");
+        if (textEl) textEl.textContent = selected.instructions || `Send payment to ${selected.name} number below and enter TrxID.`;
+        if (numEl) numEl.textContent = `${selected.number} (${selected.account_name || 'Personal'})`;
     }
 }
 
 function copyPaymentNumber() {
-    const numText = document.getElementById("payment-number-display").textContent.split(' ')[0];
+    const numDisplay = document.getElementById("payment-number-display");
+    if (!numDisplay) return;
+    const numText = numDisplay.textContent.split(' ')[0];
     navigator.clipboard.writeText(numText).then(() => {
         alert("Payment number copied: " + numText);
     });
@@ -133,30 +264,41 @@ function copyPaymentNumber() {
 // ----------------------------------------------------
 function renderNavbarAuth() {
     const container = document.getElementById("nav-auth-container");
-    if (!container) return;
+    const mobileContainer = document.getElementById("mobile-nav-auth-container");
 
-    if (customerToken && customerUser) {
-        container.innerHTML = `
-            <div class="user-btn-wrap">
-                <button class="user-pill" onclick="openUserModal()">
-                    <span>👤</span> <span>${customerUser.name.split(' ')[0]}</span>
-                </button>
-            </div>
-        `;
-    } else {
-        container.innerHTML = `
-            <button class="nav-btn" onclick="openAuthModal()">🔑 Sign In</button>
+    const content = (customerToken && customerUser) ? `
+        <div class="user-btn-wrap">
+            <button class="user-pill" onclick="openUserModal()">
+                <span>👤</span> <span>${customerUser.name.split(' ')[0]}</span>
+            </button>
+        </div>
+    ` : `
+        <button class="nav-btn" onclick="openAuthModal()">🔑 Sign In</button>
+    `;
+
+    if (container) container.innerHTML = content;
+    if (mobileContainer) {
+        mobileContainer.innerHTML = (customerToken && customerUser) ? `
+            <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="closeMobileMenu(); openUserModal();">
+                👤 My Account (${customerUser.name.split(' ')[0]})
+            </button>
+        ` : `
+            <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="closeMobileMenu(); openAuthModal();">
+                🔑 Sign In / Account
+            </button>
         `;
     }
 }
 
 function openAuthModal(defaultTab = 'login') {
-    document.getElementById("auth-modal").classList.add("active");
+    const modal = document.getElementById("auth-modal");
+    if (modal) modal.style.display = "flex";
     switchAuthTab(defaultTab);
 }
 
 function closeAuthModal() {
-    document.getElementById("auth-modal").classList.remove("active");
+    const modal = document.getElementById("auth-modal");
+    if (modal) modal.style.display = "none";
 }
 
 let pendingOtpEmail = "";
@@ -167,12 +309,18 @@ function switchAuthTab(tab) {
     const isRegister = tab === 'register';
     const isOtp = tab === 'otp';
 
-    document.getElementById("tab-login-btn").classList.toggle("active", isLogin);
-    document.getElementById("tab-register-btn").classList.toggle("active", isRegister);
+    const loginTabBtn = document.getElementById("tab-login-btn");
+    const regTabBtn = document.getElementById("tab-register-btn");
+    if (loginTabBtn) loginTabBtn.classList.toggle("active", isLogin);
+    if (regTabBtn) regTabBtn.classList.toggle("active", isRegister);
     
-    document.getElementById("login-form").style.display = isLogin ? "block" : "none";
-    document.getElementById("register-form").style.display = isRegister ? "block" : "none";
-    document.getElementById("otp-form").style.display = isOtp ? "block" : "none";
+    const loginForm = document.getElementById("login-form");
+    const regForm = document.getElementById("register-form");
+    const otpForm = document.getElementById("otp-form");
+
+    if (loginForm) loginForm.style.display = isLogin ? "block" : "none";
+    if (regForm) regForm.style.display = isRegister ? "block" : "none";
+    if (otpForm) otpForm.style.display = isOtp ? "block" : "none";
 }
 
 async function handleCustomerLogin(e) {
@@ -201,7 +349,6 @@ async function handleCustomerLogin(e) {
             customerUser = data.user;
             localStorage.setItem("customer_token", customerToken);
             localStorage.setItem("customer_user", JSON.stringify(customerUser));
-            
             closeAuthModal();
             renderNavbarAuth();
             openUserModal();
@@ -209,7 +356,7 @@ async function handleCustomerLogin(e) {
             alert("❌ " + (data.error || "Login failed"));
         }
     } catch (err) {
-        alert("❌ Connection error: " + err.message);
+        alert("Error: " + err.message);
     } finally {
         btn.disabled = false;
         btn.textContent = "Sign In to Account";
@@ -220,7 +367,7 @@ async function handleCustomerRegister(e) {
     e.preventDefault();
     const btn = document.getElementById("reg-submit-btn");
     btn.disabled = true;
-    btn.textContent = "Processing...";
+    btn.textContent = "Creating Account...";
 
     const antiBot = await generateAntiBotPayload();
     const payload = {
@@ -240,32 +387,25 @@ async function handleCustomerRegister(e) {
         const data = await res.json();
 
         if (data.success) {
-            if (data.needs_otp) {
-                // Switch to OTP screen
-                pendingOtpEmail = data.email || payload.email;
+            if (data.requireOtp) {
+                pendingOtpEmail = payload.email;
                 document.getElementById("otp-display-email").textContent = pendingOtpEmail;
-                document.getElementById("otp-input-code").value = "";
                 switchAuthTab('otp');
-                startResendCooldown();
-                alert(`📧 ${data.message}`);
-                return;
+                startResendCountdown();
+            } else {
+                customerToken = data.token;
+                customerUser = data.user;
+                localStorage.setItem("customer_token", customerToken);
+                localStorage.setItem("customer_user", JSON.stringify(customerUser));
+                closeAuthModal();
+                renderNavbarAuth();
+                openUserModal();
             }
-
-            // Direct signup without OTP
-            customerToken = data.token;
-            customerUser = data.user;
-            localStorage.setItem("customer_token", customerToken);
-            localStorage.setItem("customer_user", JSON.stringify(customerUser));
-
-            alert("🎉 Account created successfully!");
-            closeAuthModal();
-            renderNavbarAuth();
-            openUserModal();
         } else {
             alert("❌ " + (data.error || "Registration failed"));
         }
     } catch (err) {
-        alert("❌ Connection error: " + err.message);
+        alert("Error: " + err.message);
     } finally {
         btn.disabled = false;
         btn.textContent = "✨ Create Account";
@@ -277,19 +417,14 @@ async function handleVerifyOtp(e) {
     const btn = document.getElementById("otp-submit-btn");
     const code = document.getElementById("otp-input-code").value.trim();
 
-    if (!code || code.length !== 6) {
-        alert("Please enter the 6-digit verification code");
-        return;
-    }
-
     btn.disabled = true;
-    btn.textContent = "Verifying Code...";
+    btn.textContent = "Verifying...";
 
     try {
         const res = await fetch("/api/auth/verify-otp", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: pendingOtpEmail, otp_code: code })
+            body: JSON.stringify({ email: pendingOtpEmail, otp: code })
         });
         const data = await res.json();
 
@@ -298,55 +433,27 @@ async function handleVerifyOtp(e) {
             customerUser = data.user;
             localStorage.setItem("customer_token", customerToken);
             localStorage.setItem("customer_user", JSON.stringify(customerUser));
-
-            alert("🎉 " + data.message);
             closeAuthModal();
             renderNavbarAuth();
             openUserModal();
         } else {
-            alert("❌ " + (data.error || "Verification failed"));
+            alert("❌ " + (data.error || "Invalid OTP code"));
         }
     } catch (err) {
-        alert("❌ Error: " + err.message);
+        alert("Error: " + err.message);
     } finally {
         btn.disabled = false;
         btn.textContent = "✓ Verify & Activate Account";
     }
 }
 
-async function handleResendOtp() {
-    if (!pendingOtpEmail) return;
-    const btn = document.getElementById("otp-resend-btn");
-    btn.disabled = true;
-    btn.textContent = "Sending...";
-
-    try {
-        const res = await fetch("/api/auth/resend-otp", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: pendingOtpEmail })
-        });
-        const data = await res.json();
-        if (data.success) {
-            alert("📧 " + data.message);
-            startResendCooldown();
-        } else {
-            alert("❌ " + data.error);
-            btn.disabled = false;
-            btn.textContent = "Resend Code";
-        }
-    } catch (err) {
-        alert("Error: " + err.message);
-        btn.disabled = false;
-        btn.textContent = "Resend Code";
-    }
-}
-
-function startResendCooldown() {
+function startResendCountdown() {
+    let seconds = 60;
     const btn = document.getElementById("otp-resend-btn");
     if (!btn) return;
-    let seconds = 60;
     btn.disabled = true;
+    btn.textContent = `Resend in ${seconds}s`;
+
     if (resendTimer) clearInterval(resendTimer);
 
     resendTimer = setInterval(() => {
@@ -378,14 +485,19 @@ async function openUserModal() {
     if (!customerToken) {
         return openAuthModal();
     }
-    document.getElementById("user-modal").classList.add("active");
-    document.getElementById("user-display-name").textContent = customerUser ? customerUser.name : "My Account";
-    document.getElementById("user-display-email").textContent = customerUser ? customerUser.email : "";
+    const modal = document.getElementById("user-modal");
+    if (modal) modal.style.display = "flex";
+
+    const nameEl = document.getElementById("user-display-name");
+    const emailEl = document.getElementById("user-display-email");
+    if (nameEl) nameEl.textContent = customerUser ? customerUser.name : "My Account";
+    if (emailEl) emailEl.textContent = customerUser ? customerUser.email : "";
     fetchCustomerData();
 }
 
 function closeUserModal() {
-    document.getElementById("user-modal").classList.remove("active");
+    const modal = document.getElementById("user-modal");
+    if (modal) modal.style.display = "none";
 }
 
 async function fetchCustomerData() {
@@ -410,7 +522,9 @@ async function fetchCustomerData() {
 }
 
 function renderUserActiveDns(activeDnsList) {
-    const container = document.getElementById("active-dns-container");
+    const container = document.getElementById("user-active-services");
+    if (!container) return;
+
     if (!activeDnsList || activeDnsList.length === 0) {
         container.innerHTML = `
             <div style="background: rgba(0,0,0,0.2); border: 1px dashed var(--border-color); border-radius: 8px; padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px;">
@@ -421,14 +535,14 @@ function renderUserActiveDns(activeDnsList) {
     }
 
     container.innerHTML = activeDnsList.map(dns => `
-        <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+        <div class="active-dns-card">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
                     <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #38bdf8;">${dns.plan_name}</span>
                     <h4 style="font-size: 16px; color: #fff; margin: 4px 0;">DNS Host: <code style="color: #38bdf8; font-size: 14px;">${dns.dns_url}</code></h4>
-                    <span style="font-size: 12px; color: var(--text-muted);">PIN / Client ID: <b style="color:#fff;">${dns.client_id}</b> | Expires: <b>${dns.expire_date || 'Active'}</b></span>
+                    <span style="font-size: 12px; color: var(--text-muted);">PIN: <b style="color:#fff;">${dns.client_id}</b> | Expires: <b>${dns.expire_date || 'Active'}</b></span>
                 </div>
-                <span class="badge badge-approved" style="background: #34d399; color: #0f172a; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">ACTIVE</span>
+                <span class="badge badge-approved">ACTIVE</span>
             </div>
 
             <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
@@ -436,7 +550,7 @@ function renderUserActiveDns(activeDnsList) {
                     📋 Copy Hostname
                 </button>
                 <button class="btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="downloadIosProfile('${dns.client_id}', '${dns.dns_url}')">
-                    🍏 Download iOS Profile
+                    🍏 iOS Profile
                 </button>
             </div>
         </div>
@@ -444,25 +558,30 @@ function renderUserActiveDns(activeDnsList) {
 }
 
 function renderUserOrderHistory(orders) {
-    const tbody = document.getElementById("user-orders-tbody");
+    const container = document.getElementById("user-order-history");
+    if (!container) return;
+
     if (!orders || orders.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 15px;">No orders found</td></tr>`;
+        container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 15px; font-size: 13px;">No orders found</div>`;
         return;
     }
 
-    tbody.innerHTML = orders.map(o => `
-        <tr>
-            <td><b style="color:#fff;">${o.order_id}</b><br><span style="font-size: 11px; color: var(--text-muted);">${o.created_at || ''}</span></td>
-            <td>${o.plan_name}</td>
-            <td>${o.amount} ${o.currency}</td>
-            <td><span class="badge badge-${o.status}">${o.status}</span></td>
-            <td>${o.dns_url ? `<code style="color: #38bdf8;">${o.dns_url}</code>` : '<span style="color:var(--text-muted);">Pending</span>'}</td>
-        </tr>
+    container.innerHTML = orders.map(o => `
+        <div class="order-history-item">
+            <div>
+                <b style="color:#fff; font-size: 13px;">${o.order_id}</b>
+                <div style="font-size: 11px; color: var(--text-muted);">${o.plan_name} • ${o.amount} ${o.currency}</div>
+            </div>
+            <div style="text-align: right;">
+                <span class="badge badge-${o.status}">${o.status}</span>
+                ${o.dns_url ? `<div style="font-size: 11px; color: #38bdf8; margin-top: 2px;"><code>${o.dns_url}</code></div>` : ''}
+            </div>
+        </div>
     `).join('');
 }
 
 function downloadIosProfile(clientId, dotDomain) {
-    const cleanHost = (dotDomain || `${clientId}.dns.sohel.pp.ua`).trim();
+    const cleanHost = (dotDomain || `${clientId}.dnsbd.pp.ua`).trim();
     const mobileconfig = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -524,22 +643,31 @@ function openOrderModal(planId) {
     if (!siteConfig || !siteConfig.plans) return;
     currentPlan = siteConfig.plans.find(p => p.id === planId) || siteConfig.plans[0];
 
-    document.getElementById("order-plan-id").value = currentPlan.id;
-    document.getElementById("modal-plan-title").textContent = `Order ${currentPlan.name}`;
-    document.getElementById("modal-plan-price").textContent = `${currentPlan.price} ${siteConfig.currency_symbol || 'SAR'}`;
+    const planIdEl = document.getElementById("order-plan-id");
+    const planTitleEl = document.getElementById("modal-plan-title");
+    const planPriceEl = document.getElementById("modal-plan-price");
+
+    if (planIdEl) planIdEl.value = currentPlan.id;
+    if (planTitleEl) planTitleEl.textContent = `Order ${currentPlan.name}`;
+    if (planPriceEl) planPriceEl.textContent = `${currentPlan.price} ${siteConfig.currency_symbol || '﷼'}`;
 
     // Auto-fill if user logged in
     if (customerUser) {
-        document.getElementById("order-name").value = customerUser.name || "";
-        document.getElementById("order-phone").value = customerUser.phone || "";
-        document.getElementById("order-email").value = customerUser.email || "";
+        const nameIn = document.getElementById("order-name");
+        const phoneIn = document.getElementById("order-phone");
+        const emailIn = document.getElementById("order-email");
+        if (nameIn) nameIn.value = customerUser.name || "";
+        if (phoneIn) phoneIn.value = customerUser.phone || "";
+        if (emailIn) emailIn.value = customerUser.email || "";
     }
 
-    document.getElementById("order-modal").classList.add("active");
+    const modal = document.getElementById("order-modal");
+    if (modal) modal.style.display = "flex";
 }
 
 function closeOrderModal() {
-    document.getElementById("order-modal").classList.remove("active");
+    const modal = document.getElementById("order-modal");
+    if (modal) modal.style.display = "none";
 }
 
 async function submitOrder(e) {
@@ -590,6 +718,69 @@ async function submitOrder(e) {
         alert("❌ Connection error: " + err.message);
     } finally {
         btn.disabled = false;
-        btn.textContent = "✓ Confirm & Submit Payment";
+        btn.textContent = "Confirm & Submit Order";
+    }
+}
+
+// ----------------------------------------------------
+// Public DNS Status Checker
+// ----------------------------------------------------
+async function checkDnsStatus() {
+    const input = document.getElementById("checker-query");
+    const resultBox = document.getElementById("checker-result");
+    const btn = document.getElementById("btn-checker");
+
+    const query = (input ? input.value : "").trim();
+    if (!query) {
+        alert("Please enter your Phone Number or DNS PIN");
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Checking...";
+    }
+    resultBox.style.display = "none";
+
+    try {
+        const res = await fetch(`/api/check-status?q=${encodeURIComponent(query)}`);
+        const json = await res.json();
+
+        resultBox.style.display = "block";
+        if (json.success && json.data) {
+            const d = json.data;
+            resultBox.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <b style="color: #38bdf8; font-size: 16px;">${d.client_id || d.order_id}</b>
+                    <span class="badge badge-${d.status}">${d.status}</span>
+                </div>
+                <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+                    <div>🌐 <b>Private DNS:</b> <code style="color: #fff;">${d.dns_url || 'Pending Activation'}</code></div>
+                    <div>⏳ <b>Validity:</b> ${d.duration_days ? `${d.duration_days} Days` : '--'} (Expires: ${d.expire_date || 'N/A'})</div>
+                    <div>👤 <b>Customer:</b> ${d.customer_name}</div>
+                </div>
+                ${d.dns_url ? `
+                    <div style="margin-top: 14px; display: flex; gap: 8px;">
+                        <button class="btn-primary" style="padding: 6px 14px; font-size: 12px;" onclick="navigator.clipboard.writeText('${d.dns_url}').then(() => alert('Copied DNS Hostname: ${d.dns_url}'))">
+                            📋 Copy DNS Hostname
+                        </button>
+                    </div>
+                ` : ''}
+            `;
+        } else {
+            resultBox.innerHTML = `
+                <div style="color: #f87171; font-size: 13px; text-align: center;">
+                    ❌ ${json.error || "No active order or PIN found matching your query."}
+                </div>
+            `;
+        }
+    } catch (e) {
+        resultBox.style.display = "block";
+        resultBox.innerHTML = `<div style="color: #f87171; font-size: 13px;">Error: ${e.message}</div>`;
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = siteConfig && siteConfig.btn_checker_text ? siteConfig.btn_checker_text : "Check Status";
+        }
     }
 }
