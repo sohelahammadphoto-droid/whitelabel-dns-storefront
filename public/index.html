@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Private DNS — High Speed & Banking Access</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,7 +12,7 @@
 <body>
 
     <!-- Notice Bar -->
-    <div class="notice-bar">
+    <div class="notice-bar" id="notice-bar-wrap">
         <div class="container" id="notice-text">
             ⚡ Instant Private DNS Activation after payment verification! 24/7 dedicated support.
         </div>
@@ -23,14 +23,33 @@
         <div class="container nav-wrap">
             <a href="/" class="brand-logo">
                 <span id="site-name">UltraDNS</span>
-                <span class="brand-badge">PRO</span>
+                <span class="brand-badge" id="site-badge">PRO</span>
             </a>
-            <ul class="nav-menu">
+
+            <!-- Desktop Nav Menu -->
+            <ul class="nav-menu" id="desktop-nav">
                 <li><a href="#plans" class="nav-link">Plans</a></li>
                 <li><a href="#check" class="nav-link">Check Status</a></li>
                 <li><a href="#guide" class="nav-link">Setup Guide</a></li>
                 <li id="nav-auth-container">
                     <button class="nav-btn" onclick="openAuthModal()">🔑 Sign In</button>
+                </li>
+            </ul>
+
+            <!-- Mobile Hamburger Toggle -->
+            <button class="mobile-menu-btn" id="mobile-toggle-btn" onclick="toggleMobileMenu()" aria-label="Toggle navigation menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+
+        <!-- Mobile Drawer Menu -->
+        <div class="mobile-drawer" id="mobile-drawer">
+            <ul class="mobile-nav-list">
+                <li><a href="#plans" class="mobile-nav-link" onclick="closeMobileMenu()">⚡ Pricing Plans</a></li>
+                <li><a href="#check" class="mobile-nav-link" onclick="closeMobileMenu()">🔍 Check DNS Status</a></li>
+                <li><a href="#guide" class="mobile-nav-link" onclick="closeMobileMenu()">📖 Setup Guide</a></li>
+                <li id="mobile-nav-auth-container" style="margin-top: 15px;">
+                    <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="closeMobileMenu(); openAuthModal();">🔑 Sign In / Account</button>
                 </li>
             </ul>
         </div>
@@ -41,18 +60,18 @@
         <div class="container">
             <div class="status-pill">
                 <span class="status-dot"></span>
-                <span>Tier-1 Dedicated Private DNS Servers Online</span>
+                <span id="hero-pill">Tier-1 Dedicated Private DNS Servers Online</span>
             </div>
             <h1 class="hero-title">
-                Lightning Fast, Encrypted<br>
-                <span>Private DNS Access</span>
+                <span id="hero-title-line1">Lightning Fast, Encrypted</span><br>
+                <span class="hero-title-highlight" id="hero-title-line2">Private DNS Access</span>
             </h1>
-            <p class="hero-subtitle" id="tagline">
+            <p class="hero-subtitle" id="hero-subtitle">
                 Uninterrupted zero-lag connection for mobile banking, encrypted streaming, and HD VoIP voice protocols.
             </p>
             <div class="hero-actions">
-                <a href="#plans" class="btn-primary">🚀 Get Private DNS Now</a>
-                <a href="#check" class="btn-secondary">🔍 Check Existing PIN</a>
+                <a href="#plans" class="btn-primary" id="btn-hero-buy">🚀 Get Private DNS Now</a>
+                <a href="#check" class="btn-secondary" id="btn-hero-check">🔍 Check Existing PIN</a>
             </div>
         </div>
     </section>
@@ -61,8 +80,8 @@
     <section class="features">
         <div class="container">
             <div class="section-head">
-                <h2 class="section-title">Engineered for Perfection</h2>
-                <p class="section-desc">Why thousands of global users trust our encrypted DNS infrastructure</p>
+                <h2 class="section-title" id="features-title">Engineered for Perfection</h2>
+                <p class="section-desc" id="features-subtitle">Why thousands of global users trust our encrypted DNS infrastructure</p>
             </div>
             <div class="feature-grid">
                 <div class="feature-card">
@@ -93,12 +112,12 @@
     <section class="pricing" id="plans">
         <div class="container">
             <div class="section-head">
-                <h2 class="section-title">Select Your Pass</h2>
-                <p class="section-desc">Flexible packages tailored for individuals and families</p>
+                <h2 class="section-title" id="pricing-title">Select Your Pass</h2>
+                <p class="section-desc" id="pricing-subtitle">Flexible packages tailored for individuals and families</p>
             </div>
             <div class="pricing-grid" id="plans-container">
                 <!-- Dynamically rendered plans -->
-                <div style="text-align:center; padding: 40px; color: var(--text-muted);">Loading packages...</div>
+                <div style="text-align:center; padding: 40px; color: var(--text-muted); grid-column: 1/-1;">Loading packages...</div>
             </div>
         </div>
     </section>
@@ -107,12 +126,12 @@
     <section class="checker-section" id="check">
         <div class="container">
             <div class="checker-box">
-                <h2 style="font-size: 26px; font-weight: 800; margin-bottom: 8px;">Check DNS Status & Validity</h2>
-                <p style="color: var(--text-secondary); font-size: 14px;">Enter your Mobile Number or Assigned DNS PIN to view your connection details and remaining days.</p>
+                <h2 class="checker-title" id="checker-title">Check DNS Status & Validity</h2>
+                <p class="checker-subtitle" id="checker-subtitle">Enter your Mobile Number or Assigned DNS PIN to view your connection details and remaining days.</p>
                 
                 <div class="checker-input-wrap">
                     <input type="text" id="checker-query" class="checker-input" placeholder="e.g. 0501234567 or u123456">
-                    <button class="btn-primary" onclick="checkDnsStatus()">Check Status</button>
+                    <button class="btn-primary" id="btn-checker" onclick="checkDnsStatus()">Check Status</button>
                 </div>
 
                 <div id="checker-result" class="checker-result">
@@ -136,7 +155,7 @@
                         <li>Go to phone <b>Settings ➔ Connections ➔ More connection settings</b>.</li>
                         <li>Tap on <b>Private DNS</b>.</li>
                         <li>Select <b>Private DNS provider hostname</b>.</li>
-                        <li>Paste your assigned DNS code (e.g. <code>user123.dns.sohel.pp.ua</code>) and tap <b>Save</b>.</li>
+                        <li>Paste your assigned DNS code (e.g. <code>u123456.dnsbd.pp.ua</code>) and tap <b>Save</b>.</li>
                     </ol>
                 </div>
                 <div class="guide-card">
@@ -269,7 +288,7 @@
             </div>
 
             <div style="margin-top: 20px; text-align: center;">
-                <button class="btn-primary" style="width: 100%;" onclick="closeUserModal(); location.href='#plans';">
+                <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="closeUserModal(); location.href='#plans';">
                     🚀 Buy New Pass / Renew
                 </button>
             </div>
@@ -327,16 +346,16 @@
                     <input type="text" id="order-trx" class="form-control" placeholder="Enter Transaction Reference" required>
                 </div>
 
-                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;" id="order-submit-btn">
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px; justify-content: center;" id="order-submit-btn">
                     Confirm & Submit Order
                 </button>
             </form>
         </div>
     </div>
 
-    <!-- Floating WhatsApp Widget -->
-    <a href="#" target="_blank" id="whatsapp-link" class="whatsapp-float" title="Chat on WhatsApp">
-        💬
+    <!-- Floating WhatsApp / Support Widget -->
+    <a href="#" target="_blank" id="whatsapp-link" class="whatsapp-float" title="Chat on WhatsApp" style="display: none;">
+        <span style="font-size: 24px;">💬</span>
     </a>
 
     <!-- Footer -->
