@@ -9,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <!-- Dynamic Injected Custom CSS from Admin -->
+    <style id="dynamic-custom-css"></style>
 </head>
 <body>
 
@@ -33,7 +35,16 @@
             <ul class="nav-menu" id="desktop-nav">
                 <li><a href="#plans" class="nav-link">Plans</a></li>
                 <li><a href="#check" class="nav-link">Check Status</a></li>
-                <li><a href="#guide" class="nav-link">Setup Guide</a></li>
+                <li><a href="#faq" class="nav-link">FAQ</a></li>
+                <li><a href="#guide" class="nav-link">Setup</a></li>
+                <li id="currency-switch-wrap">
+                    <select id="currency-select" class="currency-selector" onchange="handleCurrencyChange(this.value)">
+                        <option value="SAR">﷼ SAR</option>
+                        <option value="BDT">৳ BDT</option>
+                        <option value="USD">$ USD</option>
+                        <option value="AED">د.إ AED</option>
+                    </select>
+                </li>
                 <li id="nav-auth-container">
                     <button class="nav-btn" onclick="openAuthModal()">🔑 Sign In</button>
                 </li>
@@ -50,16 +61,26 @@
             <ul class="mobile-nav-list">
                 <li><a href="#plans" class="mobile-nav-link" onclick="closeMobileMenu()">⚡ Pricing Plans</a></li>
                 <li><a href="#check" class="mobile-nav-link" onclick="closeMobileMenu()">🔍 Check DNS Status</a></li>
+                <li><a href="#faq" class="mobile-nav-link" onclick="closeMobileMenu()">❓ FAQ</a></li>
                 <li><a href="#guide" class="mobile-nav-link" onclick="closeMobileMenu()">📖 Setup Guide</a></li>
-                <li id="mobile-nav-auth-container" style="margin-top: 15px;">
+                <li style="display:flex; justify-content:space-between; align-items:center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <span style="font-size: 13px; color: var(--text-secondary); font-weight: 600;">Currency:</span>
+                    <select id="mobile-currency-select" class="currency-selector" onchange="handleCurrencyChange(this.value)">
+                        <option value="SAR">﷼ SAR</option>
+                        <option value="BDT">৳ BDT</option>
+                        <option value="USD">$ USD</option>
+                        <option value="AED">د.إ AED</option>
+                    </select>
+                </li>
+                <li id="mobile-nav-auth-container" style="margin-top: 10px;">
                     <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="closeMobileMenu(); openAuthModal();">🔑 Sign In / Account</button>
                 </li>
             </ul>
         </div>
     </header>
 
-    <!-- Hero Section -->
-    <section class="hero">
+    <!-- 1. Hero Section -->
+    <section class="hero" id="hero-section">
         <div class="container">
             <div class="status-pill">
                 <span class="status-dot"></span>
@@ -79,39 +100,29 @@
         </div>
     </section>
 
-    <!-- Features Section -->
-    <section class="features">
+    <!-- 2. Live Stats Counter Section -->
+    <section class="stats-section" id="stats-section">
+        <div class="container">
+            <div class="stats-grid" id="stats-container">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. Features Section -->
+    <section class="features" id="features-section">
         <div class="container">
             <div class="section-head">
                 <h2 class="section-title" id="features-title">Engineered for Perfection</h2>
                 <p class="section-desc" id="features-subtitle">Why thousands of global users trust our encrypted DNS infrastructure</p>
             </div>
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <span class="feature-icon">🛡️</span>
-                    <h3>Zero-Lag Banking</h3>
-                    <p>Instant TLS acceleration for all digital wallets, mobile apps, and financial portals without VPN throttling.</p>
-                </div>
-                <div class="feature-card">
-                    <span class="feature-icon">📞</span>
-                    <h3>Crystal-Clear VoIP</h3>
-                    <p>Optimized low-latency routing for seamless voice and video calls anywhere in the world.</p>
-                </div>
-                <div class="feature-card">
-                    <span class="feature-icon">🔒</span>
-                    <h3>Cryptographic DoT</h3>
-                    <p>Military-grade DNS-over-TLS encryption ensures your browsing data stays 100% private and tamper-proof.</p>
-                </div>
-                <div class="feature-card">
-                    <span class="feature-icon">⚡</span>
-                    <h3>Instant Activation</h3>
-                    <p>Automated deployment gives you your unique private DNS hostname within minutes.</p>
-                </div>
+            <div class="feature-grid" id="features-container">
+                <!-- Dynamically populated -->
             </div>
         </div>
     </section>
 
-    <!-- Pricing Section -->
+    <!-- 4. Pricing Section -->
     <section class="pricing" id="plans">
         <div class="container">
             <div class="section-head">
@@ -125,7 +136,7 @@
         </div>
     </section>
 
-    <!-- DNS Status Checker -->
+    <!-- 5. DNS Status Checker -->
     <section class="checker-section" id="check">
         <div class="container">
             <div class="checker-box">
@@ -144,7 +155,40 @@
         </div>
     </section>
 
-    <!-- Setup Guide Section -->
+    <!-- 6. Customer Reviews & Testimonials -->
+    <section class="testimonials-section" id="testimonials-section">
+        <div class="container">
+            <div class="section-head">
+                <h2 class="section-title" id="testimonials-title">What Our Customers Say</h2>
+                <p class="section-desc" id="testimonials-subtitle">Real feedback from verified active subscribers</p>
+            </div>
+            <div class="testimonials-grid" id="testimonials-container">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </section>
+
+    <!-- 7. Interactive FAQ Accordion -->
+    <section class="faq-section" id="faq">
+        <div class="container">
+            <div class="section-head">
+                <h2 class="section-title" id="faq-title">Frequently Asked Questions</h2>
+                <p class="section-desc" id="faq-subtitle">Everything you need to know about our Private DNS service</p>
+            </div>
+            <div class="faq-wrap" id="faq-container">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </section>
+
+    <!-- 8. Custom HTML / Marketing Block -->
+    <div id="custom-html-section" class="custom-html-section" style="display: none;">
+        <div class="container" id="custom-html-container">
+            <!-- Injected by JS -->
+        </div>
+    </div>
+
+    <!-- 9. Setup Guide Section -->
     <section class="setup-guide" id="guide">
         <div class="container">
             <div class="section-head">
@@ -262,7 +306,7 @@
 
     <!-- Customer Account Dashboard Modal -->
     <div class="modal-overlay" id="user-modal">
-        <div class="modal-card" style="max-width: 600px;">
+        <div class="modal-card" style="max-width: 620px;">
             <button class="modal-close" onclick="closeUserModal()">&times;</button>
             
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px;">
@@ -278,14 +322,13 @@
                 <h4 style="font-size: 14px; font-weight: 700; color: #38bdf8; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">⚡ My Active DNS Connections</h4>
                 <div id="user-active-services">
                     <!-- Populated by JS -->
-                    <div style="color: var(--text-muted); font-size: 13px;">No active DNS subscription found. Select a pass below to get started.</div>
                 </div>
             </div>
 
             <!-- Order History -->
             <div>
-                <h4 style="font-size: 14px; font-weight: 700; color: #cbd5e1; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">📋 Order History</h4>
-                <div id="user-order-history" style="max-height: 200px; overflow-y: auto;">
+                <h4 style="font-size: 14px; font-weight: 700; color: #cbd5e1; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">📋 Order History & Invoices</h4>
+                <div id="user-order-history" style="max-height: 220px; overflow-y: auto;">
                     <!-- Populated by JS -->
                 </div>
             </div>
@@ -298,7 +341,7 @@
         </div>
     </div>
 
-    <!-- Order Modal -->
+    <!-- Order Modal with Discount Coupon Support -->
     <div class="modal-overlay" id="order-modal">
         <div class="modal-card">
             <button class="modal-close" onclick="closeOrderModal()">&times;</button>
@@ -309,9 +352,24 @@
                 <div style="display:none; opacity:0; position:absolute; left:-9999px;"><input type="text" name="_hp_company" tabindex="-1" autocomplete="off"></div>
                 <input type="hidden" id="order-plan-id">
                 
+                <div class="form-group" style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Price to Pay:</span>
+                        <div style="font-size: 22px; font-weight: 900; color: #38bdf8;" id="modal-plan-price">--</div>
+                    </div>
+                    <div id="coupon-applied-badge" style="display: none; background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 20px;">
+                        COUPON APPLIED
+                    </div>
+                </div>
+
+                <!-- 🎟️ Discount Coupon Box -->
                 <div class="form-group">
-                    <label class="form-label">Selected Plan Price</label>
-                    <div style="font-size: 24px; font-weight: 800; color: #38bdf8;" id="modal-plan-price">--</div>
+                    <label class="form-label">Discount Coupon Code (Optional)</label>
+                    <div class="coupon-input-wrap">
+                        <input type="text" id="order-coupon-code" class="form-control coupon-input" placeholder="e.g. VIP20" maxlength="20">
+                        <button type="button" class="coupon-apply-btn" id="coupon-apply-btn" onclick="applyCouponCode()">Apply</button>
+                    </div>
+                    <div id="coupon-status-msg" class="coupon-status-msg"></div>
                 </div>
 
                 <div class="form-group">
@@ -325,7 +383,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Gmail / Email Address (For Account Login)</label>
+                    <label class="form-label">Gmail / Email Address (For Account Login & Invoice)</label>
                     <input type="email" id="order-email" class="form-control" placeholder="name@gmail.com">
                 </div>
 
