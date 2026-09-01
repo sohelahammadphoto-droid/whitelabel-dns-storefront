@@ -20,19 +20,63 @@ function escapeHtml(str) {
         .replace(/>/g, "&gt;");
 }
 
+// Helper to dynamically get Telegram configuration from D1 or Env
+async function getTelegramConfig(env) {
+    let token = "";
+    let chatId = "";
+
+    // 1. Direct D1 database lookup (Primary)
+    if (env.DB) {
+        try {
+            const tokenRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'telegram_bot_token'").first();
+            if (tokenRow && tokenRow.value) {
+                token = String(tokenRow.value).replace(/^["']|["']$/g, "").trim();
+            }
+            const chatRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'telegram_chat_id'").first();
+            if (chatRow && chatRow.value) {
+                chatId = String(chatRow.value).replace(/^["']|["']$/g, "").trim();
+            }
+        } catch (e) {
+            console.error("D1 Telegram config lookup error:", e);
+        }
+    }
+
+    // 2. Fallback to getAllSettings if direct lookup returned empty
+    if (!token || !chatId) {
+        try {
+            const s = await getAllSettings(env);
+            if (!token && s.telegram_bot_token) token = String(s.telegram_bot_token).replace(/^["']|["']$/g, "").trim();
+            if (!chatId && s.telegram_chat_id) chatId = String(s.telegram_chat_id).replace(/^["']|["']$/g, "").trim();
+        } catch (_) {}
+    }
+
+    // 3. Fallback to Cloudflare Pages Environment Variables if set
+    if (!token && env.TELEGRAM_BOT_TOKEN) token = String(env.TELEGRAM_BOT_TOKEN).trim();
+    if (!chatId && env.TELEGRAM_CHAT_ID) chatId = String(env.TELEGRAM_CHAT_ID).trim();
+
+    return { token, chatId };
+}
+
 // Telegram alert helper
 async function sendTelegramOrderAlert(env, orderData) {
     try {
-        const s = await getAllSettings(env);
-        const token = (s.telegram_bot_token || env.TELEGRAM_BOT_TOKEN || "8594832553:AAF53JzxW1iPLIdUEv4bMdeA9SxS2RWIFzU").trim();
-        const chatId = (s.telegram_chat_id || env.TELEGRAM_CHAT_ID || "975998543").trim();
+        const { token, chatId } = await getTelegramConfig(env);
 
         if (!token || !chatId) {
-            console.warn("Telegram order alert skipped: token or chat_id not configured.");
+            console.warn("Telegram order alert skipped: Bot Token or Chat ID not configured in settings.");
             return;
         }
 
-        const siteName = s.site_name || "UltraDNS Store";
+        let siteName = "Private DNS Store";
+        if (env.DB) {
+            try {
+                const nameRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'site_name'").first();
+                if (nameRow && nameRow.value) {
+                    siteName = String(nameRow.value).replace(/^["']|["']$/g, "").trim();
+                }
+            } catch (_) {}
+        }
+
         const text = `🚨 <b>New Store Order Received!</b>\n` +
             `━━━━━━━━━━━━━━━━━━━\n` +
             `🆔 <b>Order ID:</b> <code>${escapeHtml(orderData.orderId)}</code>\n` +
@@ -50,7 +94,10 @@ async function sendTelegramOrderAlert(env, orderData) {
 
         const tgRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "User-Agent": "ResellerStorefront/1.0"
+            },
             body: JSON.stringify({
                 chat_id: chatId,
                 text: text,
@@ -58,22 +105,29 @@ async function sendTelegramOrderAlert(env, orderData) {
             })
         });
 
-        // Fail-safe fallback if HTML parse mode fails
+        // Fail-safe fallback: If Telegram returns an error on HTML mode, resend with plain text
         if (!tgRes.ok) {
+            const errData = await tgRes.json().catch(() => ({}));
+            console.error("Telegram HTML send failed, trying plain text fallback:", errData);
+
             const plainText = `🚨 New Store Order Received!\n` +
                 `Order ID: ${orderData.orderId}\n` +
-                `Customer: ${orderData.customerName}\n` +
-                `Phone: ${orderData.customerPhone}\n` +
+                `Customer: ${orderData.customerName || 'N/A'}\n` +
+                `Phone: ${orderData.customerPhone || 'N/A'}\n` +
                 `Email: ${orderData.finalEmail || 'N/A'}\n` +
                 `Plan: ${orderData.planName} (${orderData.durationDays} Days)\n` +
                 `Amount: ${orderData.finalAmount} ${orderData.currency}\n` +
                 `Method: ${orderData.paymentMethod}\n` +
                 `TrxID: ${orderData.trxId}\n` +
-                `Store: ${siteName}`;
+                `Store: ${siteName}\n` +
+                `Login to Store Admin to approve.`;
 
             await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "User-Agent": "ResellerStorefront/1.0"
+                },
                 body: JSON.stringify({
                     chat_id: chatId,
                     text: plainText
