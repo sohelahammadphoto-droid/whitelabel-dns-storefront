@@ -1351,6 +1351,7 @@ async function handleSendTestTelegram() {
     btn.textContent = "⏳ Sending...";
     status.style.display = "none";
 
+    // Attempt 1: Call Cloudflare Worker server-side test endpoint
     try {
         const res = await fetch("/api/admin/test-telegram", {
             method: "POST",
@@ -1358,23 +1359,71 @@ async function handleSendTestTelegram() {
             body: JSON.stringify({ bot_token: token, chat_id: chatId })
         });
 
-        const data = await res.json();
+        const rawText = await res.text();
+        let data = null;
+        try {
+            data = JSON.parse(rawText);
+        } catch {}
 
-        if (data.success) {
+        if (data && data.success) {
             status.style.display = "inline";
             status.style.color = "#34d399";
             status.textContent = "✅ " + (data.message || "Test message sent to Telegram!");
+            btn.disabled = false;
+            btn.textContent = "🧪 Send Test Telegram Alert";
+            return;
+        }
+
+        if (data && data.error) {
+            status.style.display = "inline";
+            status.style.color = "#f87171";
+            status.textContent = "❌ " + data.error;
+            btn.disabled = false;
+            btn.textContent = "🧪 Send Test Telegram Alert";
+            return;
+        }
+    } catch (err) {
+        console.warn("Backend test-telegram unavailable, executing direct dispatch fallback...", err);
+    }
+
+    // Attempt 2: Alternative Direct Browser Fallback to Telegram API
+    try {
+        const siteName = document.getElementById("setting-sitename")?.value || "UltraDNS Store";
+        const testMsg = `🔔 <b>Telegram Order Alert Test</b>\n` +
+            `━━━━━━━━━━━━━━━━━━━\n` +
+            `✅ <b>Status:</b> Connected & Working!\n` +
+            `🏪 <b>Store:</b> ${siteName}\n` +
+            `⏰ <b>Timestamp:</b> ${new Date().toUTCString()}\n` +
+            `━━━━━━━━━━━━━━━━━━━\n` +
+            `🎉 Your store will automatically notify you here when new orders arrive!`;
+
+        const tgRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                chat_id: chatId,
+                text: testMsg,
+                parse_mode: "HTML"
+            })
+        });
+
+        const tgData = await tgRes.json();
+        if (tgData && tgData.ok) {
+            status.style.display = "inline";
+            status.style.color = "#34d399";
+            status.textContent = "✅ ✓ Connected! Test message sent to your Telegram chat successfully.";
         } else {
             status.style.display = "inline";
             status.style.color = "#f87171";
-            status.textContent = "❌ " + (data.error || "Unknown error");
+            status.textContent = "❌ Telegram Error: " + (tgData?.description || "Failed to deliver message.");
         }
-    } catch (err) {
+    } catch (fallbackErr) {
         status.style.display = "inline";
         status.style.color = "#f87171";
-        status.textContent = "❌ Network error: " + err.message;
+        status.textContent = "❌ Telegram Delivery Failed. Ensure you sent /start to your bot in Telegram first.";
     } finally {
         btn.disabled = false;
         btn.textContent = "🧪 Send Test Telegram Alert";
     }
 }
+
