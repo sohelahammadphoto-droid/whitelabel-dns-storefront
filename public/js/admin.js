@@ -1299,15 +1299,16 @@ async function handleSendTestTelegram() {
 // 8. Core API & Alert Settings Save
 // ----------------------------------------------------
 async function handleSaveSettings(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const payload = {
-        reseller_api_key: document.getElementById("setting-apikey").value.trim(),
-        main_api_url: document.getElementById("setting-apiurl").value.trim(),
-        telegram_bot_token: document.getElementById("setting-telegrambottoken").value.trim(),
-        telegram_chat_id: document.getElementById("setting-telegramchatid").value.trim(),
-        new_password: document.getElementById("setting-newpassword").value.trim(),
-        turnstile_site_key: document.getElementById("setting-turnstilesitekey").value.trim(),
-        turnstile_secret_key: document.getElementById("setting-turnstilesecretkey").value.trim()
+        reseller_api_key: document.getElementById("setting-apikey")?.value.trim() || "",
+        main_api_url: document.getElementById("setting-apiurl")?.value.trim() || "https://dnshub.pages.dev",
+        telegram_bot_token: document.getElementById("setting-telegrambottoken")?.value.trim() || "",
+        telegram_chat_id: document.getElementById("setting-telegramchatid")?.value.trim() || "",
+        telegram_alerts_enabled: true,
+        new_password: document.getElementById("setting-newpassword")?.value.trim() || "",
+        turnstile_site_key: document.getElementById("setting-turnstilesitekey")?.value.trim() || "",
+        turnstile_secret_key: document.getElementById("setting-turnstilesecretkey")?.value.trim() || ""
     };
 
     try {
@@ -1318,17 +1319,19 @@ async function handleSaveSettings(e) {
         });
         const json = await res.json();
         if (json.success) {
-            alert("🎉 Core settings saved successfully!");
+            if (e) alert("🎉 Core settings saved successfully!");
             if (payload.new_password) {
                 adminPassword = payload.new_password;
                 localStorage.setItem("admin_password", adminPassword);
-                document.getElementById("setting-newpassword").value = "";
+                if (document.getElementById("setting-newpassword")) {
+                    document.getElementById("setting-newpassword").value = "";
+                }
             }
-        } else {
+        } else if (e) {
             alert("❌ " + json.error);
         }
     } catch (err) {
-        alert("Error: " + err.message);
+        if (e) alert("Error: " + err.message);
     }
 }
 
@@ -1350,6 +1353,17 @@ async function handleSendTestTelegram() {
     btn.disabled = true;
     btn.textContent = "⏳ Sending...";
     status.style.display = "none";
+
+    // Auto-save Token and Chat ID to database in background
+    fetch("/api/admin/settings", {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({
+            telegram_bot_token: token,
+            telegram_chat_id: chatId,
+            telegram_alerts_enabled: true
+        })
+    }).catch(() => {});
 
     // Attempt 1: Call Cloudflare Worker server-side test endpoint
     try {

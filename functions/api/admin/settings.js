@@ -131,7 +131,7 @@ export async function onRequestGet(context) {
         // --- 15. Telegram Bot Order Alerts ---
         telegram_bot_token: s.telegram_bot_token || "",
         telegram_chat_id: s.telegram_chat_id || "",
-        telegram_alerts_enabled: s.telegram_alerts_enabled !== undefined ? Boolean(s.telegram_alerts_enabled) : false,
+        telegram_alerts_enabled: s.telegram_alerts_enabled !== undefined ? Boolean(s.telegram_alerts_enabled) : true,
 
         // --- 16. Reseller API & Main Platform ---
         main_api_url: s.main_api_url || env.MAIN_API_URL || "https://dnshub.pages.dev",

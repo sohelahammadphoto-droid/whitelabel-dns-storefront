@@ -2,6 +2,11 @@
 import { initDb, verifyCustomerAuth, getAllSettings, json, handleOptions } from "./_db.js";
 import { verifyAntiBot } from "./_antibot.js";
 
+export async function onRequest(context) {
+    if (context.request.method === "OPTIONS") return handleOptions();
+    return onRequestPost(context);
+}
+
 export async function onRequestOptions() {
     return handleOptions();
 }
@@ -21,9 +26,11 @@ async function sendTelegramOrderAlert(env, orderData) {
         const s = await getAllSettings(env);
         const token = (s.telegram_bot_token || env.TELEGRAM_BOT_TOKEN || "").trim();
         const chatId = (s.telegram_chat_id || env.TELEGRAM_CHAT_ID || "").trim();
-        const isEnabled = s.telegram_alerts_enabled !== undefined ? Boolean(s.telegram_alerts_enabled) : true;
 
-        if (!token || !chatId || !isEnabled) return;
+        if (!token || !chatId) {
+            console.warn("Telegram order alert skipped: token or chat_id not configured in store settings.");
+            return;
+        }
 
         const text = `🚨 <b>New Store Order Received!</b>\n` +
             `━━━━━━━━━━━━━━━━━━━\n` +
