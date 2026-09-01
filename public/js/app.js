@@ -320,7 +320,6 @@ function renderConfig() {
     renderFaqs();
     renderCustomHtml();
     renderPaymentMethods();
-    renderCurrencyDropdowns();
 }
 
 function toggleSection(id, isVisible) {
@@ -328,20 +327,6 @@ function toggleSection(id, isVisible) {
     if (el) {
         el.style.display = isVisible !== false ? "" : "none";
     }
-}
-
-// 💱 Render Currency Dropdowns
-function renderCurrencyDropdowns() {
-    if (!siteConfig || !siteConfig.currencies) return;
-    const dSelect = document.getElementById("currency-select");
-    const mSelect = document.getElementById("mobile-currency-select");
-
-    const html = siteConfig.currencies.map(c => `
-        <option value="${c.code}" ${c.code === selectedCurrency ? 'selected' : ''}>${c.symbol} ${c.code}</option>
-    `).join('');
-
-    if (dSelect) dSelect.innerHTML = html;
-    if (mSelect) mSelect.innerHTML = html;
 }
 
 // 📊 Render Stats Section
@@ -537,8 +522,8 @@ let pendingOtpEmail = "";
 let resendTimer = null;
 
 function switchAuthTab(tab) {
-    const isLogin = tab === 'login';
-    const isRegister = tab === 'register';
+    const isLogin = tab === 'login' || tab === 'signin';
+    const isRegister = tab === 'register' || tab === 'signup';
     const isOtp = tab === 'otp';
 
     const loginTabBtn = document.getElementById("tab-login-btn");
@@ -698,6 +683,50 @@ function startResendCountdown() {
             btn.textContent = "Resend Code";
         }
     }, 1000);
+}
+
+async function handleResendOtp() {
+    if (!pendingOtpEmail) {
+        alert("Please register first to receive an OTP code.");
+        switchAuthTab('register');
+        return;
+    }
+    const btn = document.getElementById("otp-resend-btn");
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Sending OTP...";
+    }
+    try {
+        const antiBot = await generateAntiBotPayload();
+        const res = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                ...antiBot,
+                email: pendingOtpEmail,
+                name: document.getElementById("reg-name") ? document.getElementById("reg-name").value.trim() : "Customer",
+                phone: document.getElementById("reg-phone") ? document.getElementById("reg-phone").value.trim() : "",
+                password: document.getElementById("reg-password") ? document.getElementById("reg-password").value : "temp123456"
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert("✓ A new 6-digit OTP has been sent to " + pendingOtpEmail);
+            startResendCountdown();
+        } else {
+            alert("❌ " + (data.error || "Failed to resend OTP code"));
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = "Resend Code";
+            }
+        }
+    } catch (e) {
+        alert("Error resending OTP: " + e.message);
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Resend Code";
+        }
+    }
 }
 
 function handleCustomerLogout() {
