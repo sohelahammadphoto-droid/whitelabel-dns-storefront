@@ -1270,7 +1270,12 @@ async function handleSendTestTelegram() {
             headers: getHeaders(),
             body: JSON.stringify({ bot_token: botToken, chat_id: chatId })
         });
-        const json = await res.json();
+        let json = null;
+        try {
+            json = await res.json();
+        } catch {
+            json = { success: false, error: `Server returned HTTP ${res.status}. Deployment may still be building.` };
+        }
 
         status.style.display = "inline-block";
         if (json.success) {
