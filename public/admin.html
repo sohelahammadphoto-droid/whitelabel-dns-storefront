@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Store Admin — Reseller Portal</title>
+    <title>Store Admin — WordPress-Style Reseller Studio</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/admin.css">
 </head>
@@ -72,16 +72,19 @@
         <aside class="admin-sidebar">
             <div>
                 <div class="admin-brand">
-                    <span>⚡ Store Admin</span>
+                    <span>⚡ Store Studio</span>
                 </div>
                 <ul class="admin-nav">
-                    <li class="admin-nav-item active" onclick="showTab('orders')">📋 Orders & Sales</li>
-                    <li class="admin-nav-item" onclick="showTab('customizer')">🎨 Theme & Content Customizer</li>
+                    <li class="admin-nav-item active" onclick="showTab('analytics')">📊 Analytics & Insights</li>
+                    <li class="admin-nav-item" onclick="showTab('orders')">📋 Orders & Sales</li>
+                    <li class="admin-nav-item" onclick="showTab('customizer')">🎨 Themes & Sections (Page Builder)</li>
+                    <li class="admin-nav-item" onclick="showTab('coupons')">🎟️ Discount Coupons</li>
+                    <li class="admin-nav-item" onclick="showTab('staff')">👥 Staff & Sub-Resellers</li>
                     <li class="admin-nav-item" onclick="showTab('testpin')">🧪 30-Min Test PIN</li>
                     <li class="admin-nav-item" onclick="showTab('generate')">⚡ Full Pass PIN Gen</li>
                     <li class="admin-nav-item" onclick="showTab('email')">📧 Email & OTP</li>
                     <li class="admin-nav-item" onclick="showTab('settings')">⚙️ Store & API Settings</li>
-                    <li class="admin-nav-item"><a href="/" target="_blank" style="color:inherit; text-decoration:none; display:flex; align-items:center; gap:8px;">🌐 View Live Store</a></li>
+                    <li class="admin-nav-item"><a href="/" target="_blank" style="color:inherit; text-decoration:none; display:flex; align-items:center; gap:8px;">🌐 View Live Store ↗</a></li>
                 </ul>
             </div>
             <div>
@@ -94,8 +97,8 @@
             <!-- Topbar -->
             <div class="admin-topbar">
                 <div>
-                    <h1 class="admin-title" id="page-title">Orders & Sales</h1>
-                    <span style="color: var(--text-muted); font-size: 13px;" id="page-subtitle">Manage customer payments and DNS activations</span>
+                    <h1 class="admin-title" id="page-title">Analytics & Insights</h1>
+                    <span style="color: var(--text-muted); font-size: 13px;" id="page-subtitle">Real-time revenue, conversion, and DNS operations</span>
                 </div>
                 <div style="display: flex; gap: 12px; align-items: center;">
                     <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 8px; padding: 6px 14px;">
@@ -109,24 +112,61 @@
                 </div>
             </div>
 
-            <!-- Stats Grid -->
-            <div class="stat-grid" id="admin-stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">Total Orders</div>
-                    <div class="stat-val" id="stat-total">0</div>
+            <!-- TAB 0: 📊 ANALYTICS DASHBOARD -->
+            <div id="tab-analytics" class="tab-content">
+                <!-- Stat Grid -->
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Revenue</div>
+                        <div class="stat-val" style="color: #38bdf8;" id="analytic-revenue">0.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Orders</div>
+                        <div class="stat-val" id="analytic-total-orders">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Conversion Rate</div>
+                        <div class="stat-val" style="color: #34d399;" id="analytic-conversion">0%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Registered Customers</div>
+                        <div class="stat-val" style="color: #a78bfa;" id="analytic-customers">0</div>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-label">Pending Approval</div>
-                    <div class="stat-val" style="color: #fbbf24;" id="stat-pending">0</div>
+
+                <!-- 7-Day Revenue Trend Chart -->
+                <div class="card-box">
+                    <div class="box-header">
+                        <div class="box-title">📈 7-Day Sales & Order Volume Timeline</div>
+                        <button class="btn btn-primary btn-sm" onclick="loadAnalytics()">🔄 Refresh</button>
+                    </div>
+                    <div class="analytics-bar-chart" id="analytics-chart-container">
+                        <div style="text-align: center; width: 100%; color: var(--text-muted); padding: 40px 0;">Loading chart data...</div>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-label">Approved & Active</div>
-                    <div class="stat-val" style="color: #34d399;" id="stat-approved">0</div>
+
+                <!-- Insights Breakdown Grid -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+                    <!-- Top Plans -->
+                    <div class="card-box">
+                        <div class="box-title" style="margin-bottom: 14px;">🏆 Top Performing Packages</div>
+                        <div id="analytics-top-plans" style="display: flex; flex-direction: column; gap: 8px;">
+                            <div style="color: var(--text-muted); font-size: 13px;">No data yet</div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Method Breakdown -->
+                    <div class="card-box">
+                        <div class="box-title" style="margin-bottom: 14px;">💳 Payment Method Shares</div>
+                        <div id="analytics-payment-methods" style="display: flex; flex-direction: column; gap: 8px;">
+                            <div style="color: var(--text-muted); font-size: 13px;">No data yet</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- TAB 1: ORDERS -->
-            <div id="tab-orders" class="tab-content">
+            <!-- TAB 1: 📋 ORDERS -->
+            <div id="tab-orders" class="tab-content" style="display: none;">
                 <div class="card-box">
                     <div class="box-header">
                         <div class="box-title">Recent Customer Orders</div>
@@ -140,7 +180,7 @@
                                 <tr>
                                     <th>Order ID</th>
                                     <th>Customer</th>
-                                    <th>Plan</th>
+                                    <th>Plan & Amount</th>
                                     <th>Method & TrxID</th>
                                     <th>Status</th>
                                     <th>DNS PIN</th>
@@ -155,13 +195,13 @@
                 </div>
             </div>
 
-            <!-- TAB 2: 🎨 THEME & CONTENT CUSTOMIZER (NEW ALL-IN-ONE STUDIO) -->
+            <!-- TAB 2: 🎨 THEMES & SECTIONS (PAGE BUILDER STUDIO) -->
             <div id="tab-customizer" class="tab-content" style="display: none;">
-                <div class="card-box" style="max-width: 820px;">
+                <div class="card-box" style="max-width: 860px;">
                     <div class="box-header">
                         <div>
-                            <div class="box-title">🎨 Theme, Colors & Content Customizer</div>
-                            <span style="font-size: 12px; color: var(--text-muted);">Customize your storefront colors, hero headings, button names, and announcements with instant live sync.</span>
+                            <div class="box-title">🎨 Themes, Sections & Page Customizer</div>
+                            <span style="font-size: 12px; color: var(--text-muted);">Full WordPress-like control over page layout, theme styles, live FAQs, reviews, and custom codes.</span>
                         </div>
                         <button type="button" class="btn btn-primary" onclick="handleSaveCustomizer(event)">
                             💾 Save All Changes
@@ -169,28 +209,31 @@
                     </div>
 
                     <form onsubmit="handleSaveCustomizer(event)">
-                        <!-- 1. Color Theme Studio -->
+                        <!-- 1. Theme Presets & Palette Studio -->
                         <div class="sub-box">
                             <div class="sub-box-title" style="color: #38bdf8;">
-                                <span>🎨</span> <b>1. Theme & Color Palette Studio</b>
+                                <span>🎨</span> <b>1. Theme Mode & Color Presets</b>
                             </div>
                             
-                            <label class="form-label" style="margin-bottom: 8px;">Quick Color Presets:</label>
+                            <label class="form-label" style="margin-bottom: 8px;">Select Theme Preset:</label>
                             <div class="theme-palette-grid">
-                                <button type="button" class="theme-preset-btn" onclick="applyColorPreset('#0ea5e9', '#06b6d4', 'cyber')">
-                                    <span class="theme-dot" style="background:#0ea5e9;"></span> Electric Cyan
+                                <button type="button" class="theme-preset-btn" onclick="applyColorPreset('#6366f1', '#06b6d4', 'cyber')">
+                                    <span class="theme-dot" style="background:#6366f1;"></span> 🌌 Cyber Neon
                                 </button>
-                                <button type="button" class="theme-preset-btn" onclick="applyColorPreset('#6366f1', '#a855f7', 'navy')">
-                                    <span class="theme-dot" style="background:#6366f1;"></span> Cyber Violet
+                                <button type="button" class="theme-preset-btn" onclick="applyColorPreset('#3b82f6', '#60a5fa', 'amoled')">
+                                    <span class="theme-dot" style="background:#000000; border: 1px solid #fff;"></span> ⬛ OLED Black
                                 </button>
-                                <button type="button" class="theme-preset-btn" onclick="applyColorPreset('#10b981', '#14b8a6', 'slate')">
-                                    <span class="theme-dot" style="background:#10b981;"></span> Emerald Mint
+                                <button type="button" class="theme-preset-btn" onclick="applyColorPreset('#38bdf8', '#818cf8', 'navy')">
+                                    <span class="theme-dot" style="background:#0b1329; border: 1px solid #38bdf8;"></span> 🌊 Royal Navy
                                 </button>
-                                <button type="button" class="theme-preset-btn" onclick="applyColorPreset('#f59e0b', '#ef4444', 'amoled')">
-                                    <span class="theme-dot" style="background:#f59e0b;"></span> Sunset Flame
+                                <button type="button" class="theme-preset-btn" onclick="applyColorPreset('#10b981', '#34d399', 'slate')">
+                                    <span class="theme-dot" style="background:#10b981;"></span> 🏙️ Slate Mint
                                 </button>
-                                <button type="button" class="theme-preset-btn" onclick="applyColorPreset('#ec4899', '#8b5cf6', 'cyber')">
-                                    <span class="theme-dot" style="background:#ec4899;"></span> Neon Pink
+                                <button type="button" class="theme-preset-btn" onclick="applyColorPreset('#f59e0b', '#ef4444', 'sunset')">
+                                    <span class="theme-dot" style="background:#f59e0b;"></span> 🌅 Sunset Glow
+                                </button>
+                                <button type="button" class="theme-preset-btn" onclick="applyColorPreset('#a855f7', '#ec4899', 'violet')">
+                                    <span class="theme-dot" style="background:#a855f7;"></span> 🔮 Violet Aura
                                 </button>
                             </div>
 
@@ -204,7 +247,7 @@
                                 </div>
 
                                 <div class="form-group">
-                                    <label class="form-label">Secondary / Accent Color</label>
+                                    <label class="form-label">Accent / Secondary Color</label>
                                     <div class="color-picker-wrap">
                                         <input type="color" id="custom-theme-accent" class="color-input-preview" value="#06b6d4" oninput="updateColorInputs('accent')">
                                         <input type="text" id="custom-theme-accent-hex" class="form-control" value="#06b6d4" oninput="updateColorPickers('accent')">
@@ -218,15 +261,66 @@
                                         <option value="amoled">⬛ Pure OLED Black (#000000)</option>
                                         <option value="navy">🌊 Midnight Navy (#0b1329)</option>
                                         <option value="slate">🏙️ Slate Charcoal (#0f172a)</option>
+                                        <option value="sunset">🌅 Sunset Amber (#140d0a)</option>
+                                        <option value="violet">🔮 Violet Dream (#120b1f)</option>
                                     </select>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- 2. Branding & Identity & Logo Upload -->
+                        <!-- 2. Section Visibility Toggles (Page Builder Lite) -->
+                        <div class="sub-box">
+                            <div class="sub-box-title" style="color: #10b981;">
+                                <span>🧩</span> <b>2. Section Visibility & Page Layout (On / Off)</b>
+                            </div>
+                            <div class="section-toggle-grid">
+                                <div class="toggle-card">
+                                    <span class="toggle-label">📢 Announcement Bar</span>
+                                    <label class="switch"><input type="checkbox" id="toggle-notice" checked><span class="slider"></span></label>
+                                </div>
+                                <div class="toggle-card">
+                                    <span class="toggle-label">🚀 Hero Section</span>
+                                    <label class="switch"><input type="checkbox" id="toggle-hero" checked><span class="slider"></span></label>
+                                </div>
+                                <div class="toggle-card">
+                                    <span class="toggle-label">📊 Live Stats Counter</span>
+                                    <label class="switch"><input type="checkbox" id="toggle-stats" checked><span class="slider"></span></label>
+                                </div>
+                                <div class="toggle-card">
+                                    <span class="toggle-label">🛡️ Features Grid</span>
+                                    <label class="switch"><input type="checkbox" id="toggle-features" checked><span class="slider"></span></label>
+                                </div>
+                                <div class="toggle-card">
+                                    <span class="toggle-label">⚡ Pricing Plans</span>
+                                    <label class="switch"><input type="checkbox" id="toggle-pricing" checked><span class="slider"></span></label>
+                                </div>
+                                <div class="toggle-card">
+                                    <span class="toggle-label">🔍 DNS Status Checker</span>
+                                    <label class="switch"><input type="checkbox" id="toggle-checker" checked><span class="slider"></span></label>
+                                </div>
+                                <div class="toggle-card">
+                                    <span class="toggle-label">⭐ Customer Reviews</span>
+                                    <label class="switch"><input type="checkbox" id="toggle-testimonials" checked><span class="slider"></span></label>
+                                </div>
+                                <div class="toggle-card">
+                                    <span class="toggle-label">❓ FAQ Accordion</span>
+                                    <label class="switch"><input type="checkbox" id="toggle-faq" checked><span class="slider"></span></label>
+                                </div>
+                                <div class="toggle-card">
+                                    <span class="toggle-label">📖 Setup Guide</span>
+                                    <label class="switch"><input type="checkbox" id="toggle-guide" checked><span class="slider"></span></label>
+                                </div>
+                                <div class="toggle-card">
+                                    <span class="toggle-label">🧩 Custom HTML Block</span>
+                                    <label class="switch"><input type="checkbox" id="toggle-customhtml"><span class="slider"></span></label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Branding, Logo & Favicon -->
                         <div class="sub-box">
                             <div class="sub-box-title" style="color: #a78bfa;">
-                                <span>✍️</span> <b>2. Brand Name, Logo & Favicon Studio</b>
+                                <span>✍️</span> <b>3. Brand Name, Header Logo & Browser Favicon</b>
                             </div>
                             <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
                                 <div class="form-group">
@@ -238,13 +332,8 @@
                                     <input type="text" id="custom-sitebadge" class="form-control" placeholder="PRO / VIP">
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label class="form-label">Main Tagline (SEO & Header)</label>
-                                <input type="text" id="custom-tagline" class="form-control" placeholder="High-Speed Private DNS for Banking & Global Access">
-                            </div>
 
-                            <!-- Logo & Favicon Upload Grid -->
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 15px;">
                                 <!-- Custom Logo Box -->
                                 <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px;">
                                     <label class="form-label" style="font-weight: 700; color: #38bdf8;">🖼️ Custom Header Logo</label>
@@ -259,17 +348,16 @@
                                                 📁 Upload Logo File
                                             </button>
                                             <button type="button" class="btn btn-danger btn-sm" id="btn-remove-logo" style="width: 100%; display: none;" onclick="removeCustomLogo()">
-                                                ✕ Reset to Default
+                                                ✕ Reset
                                             </button>
                                         </div>
                                     </div>
                                     <input type="text" id="custom-sitelogo" class="form-control" style="font-size: 11px;" placeholder="Or paste Logo Image URL (https://...)" oninput="updateLogoFromUrl(this.value)">
-                                    <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px;">⚡ Auto-resizes & compresses to crisp transparent WebP/PNG.</span>
                                 </div>
 
                                 <!-- Custom Favicon Box -->
                                 <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px;">
-                                    <label class="form-label" style="font-weight: 700; color: #34d399;">🌐 Custom Browser Favicon</label>
+                                    <label class="form-label" style="font-weight: 700; color: #34d399;">🌐 Custom Favicon Icon</label>
                                     <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 10px;">
                                         <div id="favicon-preview-box" style="width: 50px; height: 50px; border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px dashed var(--border-color); display: flex; align-items: center; justify-content: center; overflow: hidden;">
                                             <span id="favicon-preview-default" style="font-size: 20px;">🛡️</span>
@@ -281,23 +369,26 @@
                                                 📁 Upload Favicon File
                                             </button>
                                             <button type="button" class="btn btn-danger btn-sm" id="btn-remove-favicon" style="width: 100%; display: none;" onclick="removeCustomFavicon()">
-                                                ✕ Reset to Default
+                                                ✕ Reset
                                             </button>
                                         </div>
                                     </div>
                                     <input type="text" id="custom-sitefavicon" class="form-control" style="font-size: 11px;" placeholder="Or paste Favicon URL (https://...)" oninput="updateFaviconFromUrl(this.value)">
-                                    <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px;">⚡ Auto-squares & scales to 64x64 crisp browser icon.</span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- 3. Hero Section Customizer -->
+                        <!-- 4. Hero Content & Notice -->
                         <div class="sub-box">
                             <div class="sub-box-title" style="color: #34d399;">
-                                <span>🚀</span> <b>3. Hero Section & Main Titles</b>
+                                <span>🚀</span> <b>4. Hero Section & Notice Bar Content</b>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Hero Top Pill Badge Text</label>
+                                <label class="form-label">Notice Announcement Bar Text</label>
+                                <input type="text" id="custom-notice" class="form-control" placeholder="⚡ Instant Private DNS Activation after payment verification!">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Hero Status Pill Badge</label>
                                 <input type="text" id="custom-heropill" class="form-control" placeholder="Tier-1 Dedicated Private DNS Servers Online">
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
@@ -306,88 +397,84 @@
                                     <input type="text" id="custom-herotitle1" class="form-control" placeholder="Lightning Fast, Encrypted">
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Hero Title (Line 2 - Highlighted)</label>
+                                    <label class="form-label">Hero Title (Line 2 - Gradient)</label>
                                     <input type="text" id="custom-herotitle2" class="form-control" placeholder="Private DNS Access">
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Hero Subtitle / Description</label>
-                                <textarea id="custom-herosubtitle" class="form-control" rows="2" placeholder="Uninterrupted zero-lag connection for mobile banking, encrypted streaming, and HD VoIP voice protocols."></textarea>
+                                <label class="form-label">Hero Subtitle</label>
+                                <textarea id="custom-herosubtitle" class="form-control" rows="2"></textarea>
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                                 <div class="form-group">
-                                    <label class="form-label">Hero Main Buy Button Label</label>
+                                    <label class="form-label">Hero Primary Button Label</label>
                                     <input type="text" id="custom-btnherobuy" class="form-control" placeholder="🚀 Get Private DNS Now">
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Hero Secondary Check Button Label</label>
+                                    <label class="form-label">Hero Secondary Button Label</label>
                                     <input type="text" id="custom-btnherocheck" class="form-control" placeholder="🔍 Check Existing PIN">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- 4. Notice & Announcement Bar -->
+                        <!-- 5. Interactive FAQ Accordion Manager -->
                         <div class="sub-box">
-                            <div class="sub-box-title" style="color: #fbbf24;">
-                                <span>📢</span> <b>4. Header Announcement & Notice Bar</b>
+                            <div class="sub-box-title" style="color: #fbbf24; justify-content: space-between;">
+                                <div><span>❓</span> <b>5. FAQ Questions & Answers Manager</b></div>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="addFaqItem()">+ Add FAQ Item</button>
                             </div>
-                            <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                <input type="checkbox" id="custom-noticeenabled" style="width: 18px; height: 18px; cursor: pointer;">
-                                <label for="custom-noticeenabled" style="font-size: 13px; font-weight: 700; color: #fff; cursor: pointer;">Show Header Notice Bar</label>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Notice Announcement Text</label>
-                                <input type="text" id="custom-notice" class="form-control" placeholder="⚡ Instant Private DNS Activation after payment verification! 24/7 dedicated support.">
+                            <div id="faq-items-admin-container">
+                                <!-- Dynamically populated FAQ rows -->
                             </div>
                         </div>
 
-                        <!-- 5. Status Checker & Package Button Labels -->
+                        <!-- 6. Customer Reviews / Testimonials Manager -->
                         <div class="sub-box">
-                            <div class="sub-box-title" style="color: #60a5fa;">
-                                <span>🔍</span> <b>5. Section Titles & Button Labels</b>
+                            <div class="sub-box-title" style="color: #60a5fa; justify-content: space-between;">
+                                <div><span>⭐</span> <b>6. Customer Reviews & Testimonials Manager</b></div>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="addTestimonialItem()">+ Add Review Item</button>
                             </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                                <div class="form-group">
-                                    <label class="form-label">Pricing Section Title</label>
-                                    <input type="text" id="custom-pricingtitle" class="form-control" placeholder="Select Your Pass">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Pricing Card Action Button</label>
-                                    <input type="text" id="custom-btnplancard" class="form-control" placeholder="⚡ Get Instant Access">
-                                </div>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                                <div class="form-group">
-                                    <label class="form-label">Status Checker Section Title</label>
-                                    <input type="text" id="custom-checkertitle" class="form-control" placeholder="Check DNS Status & Validity">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Status Checker Button Label</label>
-                                    <input type="text" id="custom-btnchecker" class="form-control" placeholder="Check Status">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Status Checker Input Placeholder</label>
-                                <input type="text" id="custom-checkerplaceholder" class="form-control" placeholder="e.g. 0501234567 or u123456">
+                            <div id="testimonial-items-admin-container">
+                                <!-- Dynamically populated Testimonials -->
                             </div>
                         </div>
 
-                        <!-- 6. Floating Contact Widget & Support -->
+                        <!-- 7. Custom HTML Marketing Block -->
+                        <div class="sub-box">
+                            <div class="sub-box-title" style="color: #f43f5e;">
+                                <span>🧩</span> <b>7. Custom HTML & Marketing Embed Block</b>
+                            </div>
+                            <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 10px;">Insert custom marketing banners, YouTube video embeds, or custom HTML directly onto the homepage.</p>
+                            <textarea id="custom-html-code" class="form-control" rows="4" placeholder="<div style='text-align:center; padding: 20px; background: rgba(99,102,241,0.1);'><h3>Special Offer!</h3></div>"></textarea>
+                        </div>
+
+                        <!-- 8. Custom CSS & JS Injector -->
+                        <div class="sub-box">
+                            <div class="sub-box-title" style="color: #eab308;">
+                                <span>⚡</span> <b>8. Custom CSS & JavaScript Injector</b>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Custom CSS Code (Injected into &lt;head&gt;)</label>
+                                <textarea id="custom-css-code" class="form-control" rows="3" placeholder=".hero-title { font-family: sans-serif; }"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Custom JavaScript / Tracking Scripts (Google Analytics, Tawk.to, Meta Pixel)</label>
+                                <textarea id="custom-js-code" class="form-control" rows="3" placeholder="// window.dataLayer = window.dataLayer || [];"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- 9. Floating Support & Socials -->
                         <div class="sub-box">
                             <div class="sub-box-title" style="color: #22c55e;">
-                                <span>💬</span> <b>6. Floating Support Widget & Support Links</b>
-                            </div>
-                            <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                <input type="checkbox" id="custom-floatingsupport" style="width: 18px; height: 18px; cursor: pointer;">
-                                <label for="custom-floatingsupport" style="font-size: 13px; font-weight: 700; color: #fff; cursor: pointer;">Show Floating WhatsApp Action Button on Store</label>
+                                <span>💬</span> <b>9. Floating WhatsApp & Social Support Links</b>
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                                 <div class="form-group">
                                     <label class="form-label">Support WhatsApp Number</label>
-                                    <input type="text" id="custom-whatsapp" class="form-control" placeholder="+966500000000 or 01700000000">
+                                    <input type="text" id="custom-whatsapp" class="form-control" placeholder="+966500000000">
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Telegram Support Link / Username</label>
+                                    <label class="form-label">Telegram Support Link</label>
                                     <input type="text" id="custom-telegram" class="form-control" placeholder="https://t.me/yourusername">
                                 </div>
                             </div>
@@ -396,19 +483,146 @@
                                 <input type="text" id="custom-whatsappmsg" class="form-control" placeholder="Hello, I need assistance with Private DNS">
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Footer Copyright Name</label>
+                                <label class="form-label">Footer Copyright Owner Name</label>
                                 <input type="text" id="custom-ownername" class="form-control" placeholder="Premium Services">
                             </div>
                         </div>
 
                         <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 15px; font-weight: 700;" id="customizer-save-btn">
-                            💾 Save All Customizer & Design Changes
+                            💾 Save All Page & Theme Changes
                         </button>
                     </form>
                 </div>
             </div>
 
-            <!-- TAB 3: 30-MIN TEST PIN GENERATOR -->
+            <!-- TAB 3: 🎟️ DISCOUNT COUPONS MANAGER -->
+            <div id="tab-coupons" class="tab-content" style="display: none;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <!-- Create Coupon Card -->
+                    <div class="card-box">
+                        <div class="box-title" style="margin-bottom: 15px;">🎟️ Create Discount Coupon</div>
+                        <form onsubmit="handleCreateCoupon(event)">
+                            <div class="form-group">
+                                <label class="form-label">Coupon Code *</label>
+                                <input type="text" id="coupon-code" class="form-control" placeholder="e.g. SAVE20 or SPECIAL50" style="text-transform: uppercase; font-family: monospace; font-weight: 700;" required>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div class="form-group">
+                                    <label class="form-label">Discount Type</label>
+                                    <select id="coupon-type" class="form-control" style="background:#131b2e;">
+                                        <option value="percent">Percentage (%)</option>
+                                        <option value="fixed">Fixed Amount</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Discount Value *</label>
+                                    <input type="number" id="coupon-val" class="form-control" placeholder="e.g. 20" required min="1">
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div class="form-group">
+                                    <label class="form-label">Min. Order Amount (SAR)</label>
+                                    <input type="number" id="coupon-min" class="form-control" placeholder="0" min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Max Uses (0 = Unlimited)</label>
+                                    <input type="number" id="coupon-maxuses" class="form-control" placeholder="0" min="0">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Expiration Date (Optional)</label>
+                                <input type="date" id="coupon-expires" class="form-control" style="background:#131b2e;">
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-weight: 700;" id="btn-save-coupon">
+                                ✨ Create Coupon
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Active Coupons Table -->
+                    <div class="card-box">
+                        <div class="box-header">
+                            <div class="box-title">Active Store Coupons</div>
+                            <button class="btn btn-secondary btn-sm" onclick="loadCoupons()">🔄 Refresh</button>
+                        </div>
+                        <div class="table-wrap">
+                            <table class="order-table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Discount</th>
+                                        <th>Uses</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="coupons-tbody">
+                                    <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Loading coupons...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: 👥 STAFF & SUB-RESELLERS -->
+            <div id="tab-staff" class="tab-content" style="display: none;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <!-- Create Staff Member -->
+                    <div class="card-box">
+                        <div class="box-title" style="margin-bottom: 15px;">👥 Create Staff / Sub-Reseller Account</div>
+                        <form onsubmit="handleCreateStaff(event)">
+                            <div class="form-group">
+                                <label class="form-label">Full Name *</label>
+                                <input type="text" id="staff-name" class="form-control" placeholder="e.g. Tariq Hasan" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Username / Login ID *</label>
+                                <input type="text" id="staff-username" class="form-control" placeholder="e.g. agent_tariq" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Password *</label>
+                                <input type="password" id="staff-password" class="form-control" placeholder="Create password" required minlength="6">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Staff Role</label>
+                                <select id="staff-role" class="form-control" style="background:#131b2e;">
+                                    <option value="support">Support Agent (Can view & approve orders)</option>
+                                    <option value="subreseller">Sub-Reseller (Agent with sales permissions)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-weight: 700;" id="btn-save-staff">
+                                ✨ Create Staff Member
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Staff List -->
+                    <div class="card-box">
+                        <div class="box-header">
+                            <div class="box-title">Registered Staff & Agents</div>
+                            <button class="btn btn-secondary btn-sm" onclick="loadStaff()">🔄 Refresh</button>
+                        </div>
+                        <div class="table-wrap">
+                            <table class="order-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name & User</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="staff-tbody">
+                                    <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Loading staff...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: 🧪 30-MIN TEST PIN -->
             <div id="tab-testpin" class="tab-content" style="display: none;">
                 <div class="card-box" style="max-width: 580px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -420,9 +634,6 @@
                     </p>
 
                     <form onsubmit="handleGenerateTestPin(event)">
-                        <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 6px; padding: 10px 12px; margin-bottom: 15px; font-size: 12px; color: #a5b4fc;">
-                            🎲 <b>Automatic Random PIN:</b> The system will securely generate a random 30-min trial PIN (e.g. <code>test5829</code>) matching main platform standards.
-                        </div>
                         <div class="form-group">
                             <label class="form-label">Customer WhatsApp / Phone Number (Optional)</label>
                             <input type="text" id="test-pin-phone" class="form-control" placeholder="e.g. +966501234567">
@@ -437,20 +648,16 @@
                     </form>
 
                     <div id="test-pin-result" style="margin-top: 20px; display: none; background: rgba(0,0,0,0.4); padding: 18px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.4);">
-                        <!-- Generated Test Result -->
                     </div>
                 </div>
             </div>
 
-            <!-- TAB 4: FULL PASS MANUAL PIN GENERATION -->
+            <!-- TAB 6: ⚡ FULL PASS MANUAL PIN GENERATION -->
             <div id="tab-generate" class="tab-content" style="display: none;">
                 <div class="card-box" style="max-width: 540px;">
                     <div class="box-title" style="margin-bottom: 15px;">⚡ Full Pass PIN Generation (Paid Credits)</div>
                     <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Directly create a long-term client PIN from your main platform API balance (for walk-in or offline cash customers).</p>
                     <form onsubmit="handleManualGenerate(event)">
-                        <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 6px; padding: 10px 12px; margin-bottom: 15px; font-size: 12px; color: #a5b4fc;">
-                            🎲 <b>Automatic Random PIN:</b> The system will securely generate a unique private DNS PIN (e.g. <code>u7k9x2</code>) matching main platform standards.
-                        </div>
                         <div class="form-group">
                             <label class="form-label">Customer Phone Number</label>
                             <input type="text" id="gen-phone" class="form-control" placeholder="e.g. 0501234567" required>
@@ -472,35 +679,29 @@
                     </form>
 
                     <div id="gen-result" style="margin-top: 20px; display: none; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
-                        <!-- Result -->
                     </div>
                 </div>
             </div>
 
-            <!-- TAB 5: EMAIL & OTP SETTINGS -->
+            <!-- TAB 7: 📧 EMAIL & OTP SETTINGS -->
             <div id="tab-email" class="tab-content" style="display: none;">
                 <div class="card-box" style="max-width: 680px;">
-                    <div class="box-title" style="margin-bottom: 10px;">📧 Gmail OTP & Verification Settings</div>
+                    <div class="box-title" style="margin-bottom: 10px;">📧 Gmail OTP & Order Confirmation Emails</div>
                     <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">
-                        Enable or disable 6-digit Gmail verification for new customer signups. You can use <b>Brevo</b> (300 free/day) or <b>Gmail App Password</b> without owning any custom domain!
+                        Enable automated 6-digit Gmail verification and order approval emails. You can use <b>Brevo</b> (300 free/day) without owning any custom domain!
                     </p>
 
                     <form onsubmit="handleSaveEmailSettings(event)">
-                        <!-- Mode Selection -->
                         <div class="form-group" style="margin-bottom: 20px;">
-                            <label class="form-label" style="color: #38bdf8; font-weight: 700;">Email Verification Mode:</label>
+                            <label class="form-label" style="color: #38bdf8; font-weight: 700;">Email Provider Mode:</label>
                             <select id="setting-emailprovider" class="form-control" onchange="toggleEmailProviderFields()" style="background: #131b2e;">
-                                <option value="none">⚪ Disabled (Instant Signup - No OTP)</option>
-                                <option value="brevo">🔵 Brevo / Sendinblue (Recommended - Free 300/Day, No Domain)</option>
-                                <option value="gmail_smtp">🔴 Gmail App Password (Free 500/Day, No Domain)</option>
+                                <option value="none">⚪ Disabled</option>
+                                <option value="brevo">🔵 Brevo / Sendinblue (Recommended - Free 300/Day)</option>
                             </select>
                         </div>
 
                         <!-- Brevo Config Box -->
                         <div id="box-brevo" style="display: none; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 8px; padding: 18px; margin-bottom: 20px;">
-                            <h4 style="color: #818cf8; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
-                                <span>🔵</span> <b>Brevo (Sendinblue) Configuration</b>
-                            </h4>
                             <div class="form-group">
                                 <label class="form-label">Brevo API Key (v3) *</label>
                                 <input type="text" id="setting-brevoapikey" class="form-control" placeholder="xkeysib-...">
@@ -511,26 +712,7 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Sender Display Name</label>
-                                <input type="text" id="setting-brevosendername" class="form-control" placeholder="UltraDNS Verification">
-                            </div>
-                        </div>
-
-                        <!-- Gmail SMTP Box -->
-                        <div id="box-gmail" style="display: none; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 8px; padding: 18px; margin-bottom: 20px;">
-                            <h4 style="color: #f87171; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
-                                <span>🔴</span> <b>Gmail App Password Configuration</b>
-                            </h4>
-                            <div class="form-group">
-                                <label class="form-label">Your Gmail Address *</label>
-                                <input type="email" id="setting-gmailemail" class="form-control" placeholder="yourname@gmail.com">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Google 16-Digit App Password *</label>
-                                <input type="text" id="setting-gmailapppassword" class="form-control" placeholder="abcd efgh ijkl mnop">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Sender Display Name</label>
-                                <input type="text" id="setting-gmailsendername" class="form-control" placeholder="UltraDNS Security">
+                                <input type="text" id="setting-brevosendername" class="form-control" placeholder="UltraDNS Notifications">
                             </div>
                         </div>
 
@@ -542,24 +724,24 @@
                     <!-- Send Live Test Email Box -->
                     <div style="margin-top: 25px; border-top: 1px solid var(--border-color); padding-top: 20px;">
                         <h4 style="font-size: 14px; font-weight: 700; color: #34d399; margin-bottom: 8px;">🧪 Live Email Tester</h4>
-                        <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 12px;">Send a sample OTP code to your Gmail to confirm your setup is working.</p>
                         <div style="display: flex; gap: 8px;">
                             <input type="email" id="test-email-recipient" class="form-control" placeholder="Enter your test Gmail address">
-                            <button type="button" class="btn btn-primary" onclick="handleSendTestEmail()" id="test-email-btn">Send Test OTP</button>
+                            <button type="button" class="btn btn-primary" onclick="handleSendTestEmail()" id="test-email-btn">Send Test Email</button>
                         </div>
                         <div id="test-email-status" style="margin-top: 10px; font-size: 13px; display: none;"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- TAB 6: STORE SETTINGS & RESELLER API -->
+            <!-- TAB 8: ⚙️ STORE SETTINGS, TELEGRAM ALERTS & RESELLER API -->
             <div id="tab-settings" class="tab-content" style="display: none;">
                 <div class="card-box" style="max-width: 680px;">
-                    <div class="box-title" style="margin-bottom: 15px;">Storefront & Reseller API Settings</div>
+                    <div class="box-title" style="margin-bottom: 15px;">Storefront, Alerts & API Configuration</div>
                     <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">All changes are saved directly in your private D1 Database.</p>
                     
                     <form onsubmit="handleSaveSettings(event)">
-                        <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                        <!-- Reseller API -->
+                        <div class="sub-box">
                             <h4 style="color: #38bdf8; font-size: 14px; margin-bottom: 10px;">🔑 Reseller API Configuration</h4>
                             <div class="form-group">
                                 <label class="form-label">Reseller API Key</label>
@@ -571,7 +753,24 @@
                             </div>
                         </div>
 
-                        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                        <!-- 🤖 Telegram Instant Order Alerts -->
+                        <div class="sub-box">
+                            <h4 style="color: #38bdf8; font-size: 14px; margin-bottom: 8px; display:flex; align-items:center; gap:6px;">
+                                <span>🤖</span> <b>Automated Telegram Order Alerts</b>
+                            </h4>
+                            <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 12px;">Get instant Telegram notifications whenever a customer submits an order on your site.</p>
+                            <div class="form-group">
+                                <label class="form-label">Telegram Bot Token</label>
+                                <input type="text" id="setting-telegrambottoken" class="form-control" placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Telegram Admin Chat ID</label>
+                                <input type="text" id="setting-telegramchatid" class="form-control" placeholder="e.g. 123456789 or @yourchannel">
+                            </div>
+                        </div>
+
+                        <!-- Security / Password -->
+                        <div class="sub-box">
                             <h4 style="color: #34d399; font-size: 14px; margin-bottom: 10px;">🛡️ Security / Admin Password</h4>
                             <div class="form-group">
                                 <label class="form-label">Change Admin Password (Optional)</label>
@@ -579,20 +778,15 @@
                             </div>
                         </div>
 
-                        <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 8px; padding: 15px; margin-bottom: 20px;">
-                            <h4 style="color: #fbbf24; font-size: 14px; margin-bottom: 6px; display:flex; align-items:center; gap:6px;">
-                                <span>🤖</span> <b>Anti-Bot & Anti-Scraping Protection</b>
-                            </h4>
-                            <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 12px; line-height: 1.5;">
-                                <b>✅ Active Default:</b> Zero-API-key Invisible Honeypot + Timing Guard + JavaScript PoW is active automatically.
-                                <br><b>⚙️ Optional Cloudflare Turnstile:</b> If you want enterprise bot-score verification, enter your Cloudflare Turnstile keys below.
-                            </p>
+                        <!-- Cloudflare Turnstile -->
+                        <div class="sub-box">
+                            <h4 style="color: #fbbf24; font-size: 14px; margin-bottom: 6px;">🤖 Cloudflare Turnstile (Optional)</h4>
                             <div class="form-group">
-                                <label class="form-label">Turnstile Site Key (Optional)</label>
+                                <label class="form-label">Turnstile Site Key</label>
                                 <input type="text" id="setting-turnstilesitekey" class="form-control" placeholder="0x4AAAAAA...">
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Turnstile Secret Key (Optional)</label>
+                                <label class="form-label">Turnstile Secret Key</label>
                                 <input type="text" id="setting-turnstilesecretkey" class="form-control" placeholder="0x4AAAAAA...">
                             </div>
                         </div>
