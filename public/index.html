@@ -80,6 +80,32 @@
                 <a href="#plans" class="btn-primary" id="btn-hero-buy">🚀 Get Private DNS Now</a>
                 <a href="#check" class="btn-secondary" id="btn-hero-check">🔍 Check Existing PIN</a>
             </div>
+
+            <!-- Live Global Telemetry Visualizer Card (Stitch Elite Redesign) -->
+            <div class="telemetry-hero-card">
+                <div class="telemetry-header">
+                    <span class="telemetry-title">⚡ Live Global Network Telemetry</span>
+                    <span class="telemetry-live-badge"><span class="ping-pulse"></span> 0.01ms Anycast</span>
+                </div>
+                <div class="telemetry-nodes-grid">
+                    <div class="telemetry-node">
+                        <span class="node-flag">🇸🇦 KSA (Riyadh)</span>
+                        <span class="node-ping ping-fast">1ms</span>
+                    </div>
+                    <div class="telemetry-node">
+                        <span class="node-flag">🇦🇪 UAE (Dubai)</span>
+                        <span class="node-ping ping-fast">2ms</span>
+                    </div>
+                    <div class="telemetry-node">
+                        <span class="node-flag">🇧🇩 BD (Dhaka)</span>
+                        <span class="node-ping ping-fast">4ms</span>
+                    </div>
+                    <div class="telemetry-node">
+                        <span class="node-flag">🇪🇺 EU (Frankfurt)</span>
+                        <span class="node-ping ping-fast">8ms</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -171,30 +197,50 @@
         </div>
     </div>
 
-    <!-- 9. Setup Guide Section -->
+    <!-- 9. Setup Guide Section (Stitch 4-Platform Suite) -->
     <section class="setup-guide" id="guide">
         <div class="container">
             <div class="section-head">
                 <h2 class="section-title">Easy 1-Minute Setup</h2>
-                <p class="section-desc">No third-party VPN apps needed. Native OS settings only.</p>
+                <p class="section-desc">No third-party VPN apps needed. Native OS encrypted DNS settings only.</p>
             </div>
             <div class="guide-grid">
                 <div class="guide-card">
+                    <div class="guide-card-badge">Android 9+</div>
                     <h3>📱 Android Setup</h3>
                     <ol class="step-list">
-                        <li>Go to phone <b>Settings ➔ Connections ➔ More connection settings</b>.</li>
+                        <li>Open phone <b>Settings ➔ Connections ➔ More connection settings</b>.</li>
                         <li>Tap on <b>Private DNS</b>.</li>
                         <li>Select <b>Private DNS provider hostname</b>.</li>
-                        <li>Paste your assigned Private DNS hostname (received after order activation) and tap <b>Save</b>.</li>
+                        <li>Paste your assigned Private DNS hostname (received after activation) and tap <b>Save</b>.</li>
                     </ol>
                 </div>
                 <div class="guide-card">
+                    <div class="guide-card-badge">iOS 14+</div>
                     <h3>🍎 iPhone / iPad Setup</h3>
                     <ol class="step-list">
-                        <li>Download your personalized <b>.mobileconfig profile</b> from our portal.</li>
+                        <li>Log in to your account and tap <b>Download iOS Profile (.mobileconfig)</b>.</li>
                         <li>Open <b>Settings ➔ Profile Downloaded</b>.</li>
-                        <li>Tap <b>Install</b> and confirm with your Passcode.</li>
-                        <li>Your device is now securely connected via encrypted DNS!</li>
+                        <li>Tap <b>Install</b> and confirm with your device Passcode.</li>
+                        <li>Encrypted DNS is instantly activated across Cellular & Wi-Fi!</li>
+                    </ol>
+                </div>
+                <div class="guide-card">
+                    <div class="guide-card-badge">Windows 11</div>
+                    <h3>💻 Windows 11 (DoH)</h3>
+                    <ol class="step-list">
+                        <li>Go to <b>Settings ➔ Network & Internet ➔ Wi-Fi or Ethernet</b>.</li>
+                        <li>Click <b>Hardware Properties ➔ DNS server assignment ➔ Edit</b>.</li>
+                        <li>Select <b>Manual ➔ IPv4 ON</b>, enter DNS IP, and select <b>Encrypted only (DNS over HTTPS)</b>.</li>
+                    </ol>
+                </div>
+                <div class="guide-card">
+                    <div class="guide-card-badge">macOS 11+</div>
+                    <h3>🍏 macOS Setup</h3>
+                    <ol class="step-list">
+                        <li>Download the signed <b>.mobileconfig profile</b> from your user dashboard.</li>
+                        <li>Double-click the downloaded file to install in <b>System Settings ➔ Profiles</b>.</li>
+                        <li>Click <b>Install</b> to enable system-wide encrypted DNS.</li>
                     </ol>
                 </div>
             </div>
