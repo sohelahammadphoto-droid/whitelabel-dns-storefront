@@ -2,12 +2,4 @@ name = "whitelabel-dns-storefront"
 compatibility_date = "2026-08-30"
 pages_build_output_dir = "public"
 
-# D1 Database Binding for Cloudflare Pages Functions
-[[d1_databases]]
-binding = "DB"
-database_name = "store_db"
-database_id = "576f99d0-f5fd-4db1-b45b-f7b36ca12ccc"
-
-[vars]
-NODE_VERSION = "20"
 
