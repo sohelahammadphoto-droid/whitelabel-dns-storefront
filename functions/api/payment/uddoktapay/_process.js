@@ -156,32 +156,36 @@ export async function processCompletedPayment(env, paymentData) {
         const { token: botToken, chatId } = await getTelegramConfig(env);
         if (botToken && chatId) {
             const siteName = (await getSetting(env, "site_name", "UltraDNS Pro")) || "DNS Store";
+            const siteUrl = (await getSetting(env, "store_url", "")) || "https://whitelabel-dns-storefront.pages.dev";
             
             const teleMsg = autoProvisionSuccess ?
                 `⚡ <b>NEW AUTO-PAID ORDER PROVISIONED!</b>\n` +
                 `━━━━━━━━━━━━━━━━━━━\n` +
                 `🆔 <b>Order ID:</b> <code>${escapeHtml(orderId)}</code>\n` +
                 `👤 <b>Customer:</b> ${escapeHtml(customerName)} (<code>${escapeHtml(customerPhone)}</code>)\n` +
-                `💳 <b>Method:</b> UddoktaPay (${escapeHtml(paymentMethod)})\n` +
+                `💳 <b>Method:</b> ${escapeHtml(paymentMethod)}\n` +
                 `📝 <b>TrxID:</b> <code>${escapeHtml(trxId)}</code>\n` +
                 `💰 <b>Amount:</b> <b>${amount} ${escapeHtml(currency)}</b>\n` +
                 `🔑 <b>DNS PIN:</b> <code>${escapeHtml(clientId)}</code>\n` +
                 `🌐 <b>Host:</b> <code>${escapeHtml(dnsUrl)}</code>\n` +
                 `⏳ <b>Expires:</b> ${escapeHtml(expireDate || 'Active')}\n` +
                 `━━━━━━━━━━━━━━━━━━━\n` +
-                `🏪 <b>Store:</b> ${escapeHtml(siteName)}`
+                `🌐 <b>Website:</b> <a href="${siteUrl}">${escapeHtml(siteName)} ↗</a>\n` +
+                `🧾 <b>Invoice:</b> <a href="${siteUrl}/api/invoice?id=${encodeURIComponent(orderId)}">View Official Receipt ↗</a>`
                 :
                 `⚠️ <b>AUTO-PAID ORDER RECEIVED (ACTION REQUIRED)</b>\n` +
                 `━━━━━━━━━━━━━━━━━━━\n` +
                 `🆔 <b>Order ID:</b> <code>${escapeHtml(orderId)}</code>\n` +
                 `👤 <b>Customer:</b> ${escapeHtml(customerName)} (<code>${escapeHtml(customerPhone)}</code>)\n` +
-                `💳 <b>Method:</b> UddoktaPay (${escapeHtml(paymentMethod)})\n` +
+                `💳 <b>Method:</b> ${escapeHtml(paymentMethod)}\n` +
                 `📝 <b>TrxID:</b> <code>${escapeHtml(trxId)}</code>\n` +
                 `💰 <b>Amount:</b> <b>${amount} ${escapeHtml(currency)}</b>\n` +
                 `📢 <b>Status:</b> <b>Payment Verified!</b> (VPS low credit / offline)\n` +
                 `⚡ <i>Please click Approve in Admin Panel to issue DNS PIN.</i>\n` +
                 `━━━━━━━━━━━━━━━━━━━\n` +
-                `🏪 <b>Store:</b> ${escapeHtml(siteName)}`;
+                `🌐 <b>Website:</b> <a href="${siteUrl}">${escapeHtml(siteName)} ↗</a>\n` +
+                `⚙️ <b>Admin Panel:</b> <a href="${siteUrl}/admin.html">Open Admin Dashboard ↗</a>\n` +
+                `🧾 <b>Invoice:</b> <a href="${siteUrl}/api/invoice?id=${encodeURIComponent(orderId)}">View Official Receipt ↗</a>`;
 
             await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                 method: "POST",

@@ -68,11 +68,16 @@ async function sendTelegramOrderAlert(env, orderData) {
         }
 
         let siteName = "Private DNS Store";
+        let siteUrl = "https://whitelabel-dns-storefront.pages.dev";
         if (env.DB) {
             try {
                 const nameRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'site_name'").first();
                 if (nameRow && nameRow.value) {
                     siteName = String(nameRow.value).replace(/^["']|["']$/g, "").trim();
+                }
+                const urlRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'store_url'").first();
+                if (urlRow && urlRow.value) {
+                    siteUrl = String(urlRow.value).replace(/^["']|["']$/g, "").trim();
                 }
             } catch (_) {}
         }
@@ -89,8 +94,9 @@ async function sendTelegramOrderAlert(env, orderData) {
             `📝 <b>TrxID:</b> <code>${escapeHtml(orderData.trxId || 'N/A')}</code>\n` +
             (orderData.couponCode ? `🎟️ <b>Coupon:</b> <code>${escapeHtml(orderData.couponCode)}</code> (Saved ${orderData.discountAmount} ${escapeHtml(orderData.currency || 'SAR')})\n` : '') +
             `━━━━━━━━━━━━━━━━━━━\n` +
-            `🏪 <b>Store:</b> ${escapeHtml(siteName)}\n` +
-            `⚡ Login to Store Admin to approve.`;
+            `🌐 <b>Website:</b> <a href="${siteUrl}">${escapeHtml(siteName)} ↗</a>\n` +
+            `⚙️ <b>Admin Panel:</b> <a href="${siteUrl}/admin.html">Open Admin Dashboard ↗</a>\n` +
+            `🧾 <b>Invoice:</b> <a href="${siteUrl}/api/invoice?id=${encodeURIComponent(orderData.orderId)}">View Official Receipt ↗</a>`;
 
         const tgRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
             method: "POST",

@@ -53,7 +53,7 @@ export async function onRequestGet(context) {
     <div class="invoice-card">
         <div class="header">
             <div>
-                <div class="brand">⚡ ${siteName}</div>
+                <a href="/" target="_blank" style="text-decoration: none;"><div class="brand">⚡ ${siteName} ↗</div></a>
                 <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Official Payment Receipt</div>
             </div>
             <div style="text-align: right;">
