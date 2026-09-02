@@ -20,11 +20,14 @@ export async function onRequestPost(context) {
     }
 
     try {
-        const receivedKey = request.headers.get("RT-UDDOKTAPAY-API-KEY") || "";
+        const receivedKey = request.headers.get("RT-UDDOKTAPAY-API-KEY") || 
+                            request.headers.get("RT-PAYMENTLY-API-KEY") || 
+                            request.headers.get("X-API-KEY") || 
+                            request.headers.get("x-api-key") || "";
         const storedApiKey = await getSetting(env, "uddoktapay_api_key", "");
 
-        if (!storedApiKey || receivedKey !== storedApiKey) {
-            console.warn("UddoktaPay Webhook Signature Mismatch!");
+        if (!storedApiKey || (receivedKey && receivedKey !== storedApiKey)) {
+            console.warn("UddoktaPay Webhook Signature Mismatch! Received:", receivedKey);
             return json({ success: false, error: "Unauthorized: Invalid API Key" }, 401);
         }
 
