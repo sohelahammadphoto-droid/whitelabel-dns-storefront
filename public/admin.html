@@ -205,15 +205,55 @@
 
             <!-- TAB: 💳 PAYMENT METHODS & NUMBERS MANAGER -->
             <div id="tab-payments" class="tab-content" style="display: none;">
+                <!-- 1. Automated Gateway (UddoktaPay) -->
+                <div class="card-box" style="max-width: 860px; margin-bottom: 25px; border-color: rgba(56, 189, 248, 0.4);">
+                    <div class="box-header">
+                        <div>
+                            <div class="box-title" style="color: #38bdf8; display: flex; align-items: center; gap: 8px;">
+                                <span>⚡</span> Automated Payment Gateway (UddoktaPay)
+                            </div>
+                            <span style="font-size: 12px; color: var(--text-muted);">Enable 24/7 instant auto-activation with bKash, Nagad, Rocket, Bank Cards & Wallets via UddoktaPay.</span>
+                        </div>
+                        <label class="switch" title="Enable/Disable UddoktaPay Gateway">
+                            <input type="checkbox" id="setting-uddoktapay-enabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 15px;">
+                        <div class="form-group">
+                            <label class="form-label" style="font-weight: 700; color: #cbd5e1;">UddoktaPay API Key</label>
+                            <input type="password" id="setting-uddoktapay-apikey" class="form-control" placeholder="e.g. 98327a3c8e9b...">
+                            <span style="font-size: 11px; color: var(--text-muted);">Found in UddoktaPay Panel ➔ Settings ➔ API</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="font-weight: 700; color: #cbd5e1;">Gateway Base URL / Panel URL</label>
+                            <input type="text" id="setting-uddoktapay-baseurl" class="form-control" placeholder="e.g. https://pay.yourdomain.com or https://sandbox.uddoktapay.com">
+                            <span style="font-size: 11px; color: var(--text-muted);">Your UddoktaPay domain without trailing slash</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 14px; padding: 10px 14px; background: rgba(56, 189, 248, 0.08); border-radius: 6px; border: 1px dashed rgba(56, 189, 248, 0.3); font-size: 12px; color: #94a3b8;">
+                        💡 <b>Webhook URL:</b> Copy this into UddoktaPay Webhook setting: <code style="color: #38bdf8; word-break: break-all;" id="uddoktapay-webhook-url">/api/payment/uddoktapay/webhook</code>
+                    </div>
+
+                    <div style="margin-top: 15px; display: flex; justify-content: flex-end;">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="saveUddoktaPaySettings()">
+                            💾 Save UddoktaPay Gateway
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. Manual Payment Methods & Numbers -->
                 <div class="card-box" style="max-width: 860px;">
                     <div class="box-header">
                         <div>
-                            <div class="box-title">💳 Payment Methods & Accounts Setup</div>
-                            <span style="font-size: 12px; color: var(--text-muted);">Manage your customer checkout payment options (bKash, Nagad, STC Pay, Urpay, Bank, USDT, etc.).</span>
+                            <div class="box-title">📝 Manual Payment Methods & Accounts</div>
+                            <span style="font-size: 12px; color: var(--text-muted);">Manage offline Send Money options (bKash, Nagad, STC Pay, Urpay, Bank, etc.).</span>
                         </div>
                         <div style="display: flex; gap: 8px;">
                             <button type="button" class="btn btn-secondary btn-sm" onclick="addPaymentMethod()">+ Add Payment Method</button>
-                            <button type="button" class="btn btn-primary btn-sm" onclick="savePaymentMethods()">💾 Save Payment Methods</button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="savePaymentMethods()">💾 Save Manual Methods</button>
                         </div>
                     </div>
 

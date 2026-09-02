@@ -421,24 +421,45 @@
                     <input type="email" id="order-email" class="form-control" placeholder="name@gmail.com">
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Payment Method</label>
-                    <select id="order-payment-method" class="form-control" onchange="updatePaymentInstruction()" required>
-                        <!-- Dynamic payment methods -->
-                    </select>
-                </div>
-
-                <div class="payment-box" id="payment-instruction-box">
-                    <div id="payment-instruction-text">Select payment method above</div>
-                    <div class="payment-num-row">
-                        <span id="payment-number-display">--</span>
-                        <button type="button" class="copy-btn" onclick="copyPaymentNumber()">Copy Number</button>
+                <!-- ⚡ Payment Mode Selector (Auto vs Manual) -->
+                <div class="form-group" id="payment-mode-container" style="display: none;">
+                    <label class="form-label" style="font-weight: 700; color: #38bdf8;">Choose Payment Mode</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <button type="button" class="btn-payment-mode active" id="btn-mode-auto" onclick="switchPaymentMode('auto')">
+                            ⚡ Instant Auto<br><span style="font-size: 10px; font-weight: 500; opacity: 0.85;">bKash, Nagad, Cards</span>
+                        </button>
+                        <button type="button" class="btn-payment-mode" id="btn-mode-manual" onclick="switchPaymentMode('manual')">
+                            📝 Manual Send Money<br><span style="font-size: 10px; font-weight: 500; opacity: 0.85;">Submit TrxID</span>
+                        </button>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Transaction ID / Reference (TxID)</label>
-                    <input type="text" id="order-trx" class="form-control" placeholder="Enter Transaction Reference" required>
+                <!-- Auto Payment Notice Banner -->
+                <div id="auto-payment-notice" style="display: none; padding: 12px 14px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; font-size: 12px; color: #e0f2fe; margin-bottom: 14px;">
+                    ⚡ <b>Instant 24/7 Activation:</b> You will be redirected to the secure UddoktaPay payment page. Your Private DNS activates automatically upon payment!
+                </div>
+
+                <!-- Manual Payment Fields Container -->
+                <div id="manual-payment-fields">
+                    <div class="form-group">
+                        <label class="form-label">Manual Payment Method</label>
+                        <select id="order-payment-method" class="form-control" onchange="updatePaymentInstruction()">
+                            <!-- Dynamic payment methods -->
+                        </select>
+                    </div>
+
+                    <div class="payment-box" id="payment-instruction-box">
+                        <div id="payment-instruction-text">Select payment method above</div>
+                        <div class="payment-num-row">
+                            <span id="payment-number-display">--</span>
+                            <button type="button" class="copy-btn" onclick="copyPaymentNumber()">Copy Number</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Transaction ID / Reference (TxID)</label>
+                        <input type="text" id="order-trx" class="form-control" placeholder="Enter Transaction Reference">
+                    </div>
                 </div>
 
                 <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px; justify-content: center;" id="order-submit-btn">

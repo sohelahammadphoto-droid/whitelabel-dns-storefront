@@ -515,7 +515,13 @@ async function loadSettings() {
         setVal("setting-brevoapikey", d.brevo_api_key || "");
         setVal("setting-brevosenderemail", d.brevo_sender_email || "");
         setVal("setting-brevosendername", d.brevo_sender_name || "");
-        toggleEmailProviderFields();
+        // Automated Gateway (UddoktaPay)
+        const uddoktaCheck = document.getElementById("setting-uddoktapay-enabled");
+        if (uddoktaCheck) uddoktaCheck.checked = Boolean(d.uddoktapay_enabled);
+        setVal("setting-uddoktapay-apikey", d.uddoktapay_api_key || "");
+        setVal("setting-uddoktapay-baseurl", d.uddoktapay_base_url || "");
+        const webhookUrlEl = document.getElementById("uddoktapay-webhook-url");
+        if (webhookUrlEl) webhookUrlEl.textContent = `${window.location.origin}/api/payment/uddoktapay/webhook`;
 
         // Payment methods
         currentPaymentMethods = d.payment_methods || [];
@@ -595,6 +601,32 @@ window.deletePaymentMethod = function(idx) {
     if (confirm("Are you sure you want to delete this payment method?")) {
         currentPaymentMethods.splice(idx, 1);
         renderAdminPaymentMethods();
+    }
+};
+
+window.saveUddoktaPaySettings = async function() {
+    const isEnabled = document.getElementById("setting-uddoktapay-enabled")?.checked || false;
+    const apiKey = document.getElementById("setting-uddoktapay-apikey")?.value.trim() || "";
+    const baseUrl = document.getElementById("setting-uddoktapay-baseurl")?.value.trim() || "";
+
+    try {
+        const res = await fetch("/api/admin/settings", {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({
+                uddoktapay_enabled: isEnabled,
+                uddoktapay_api_key: apiKey,
+                uddoktapay_base_url: baseUrl
+            })
+        });
+        const json = await res.json();
+        if (json.success) {
+            alert("🎉 UddoktaPay Automated Payment Gateway settings saved successfully!");
+        } else {
+            alert("❌ " + json.error);
+        }
+    } catch (e) {
+        alert("Error saving UddoktaPay settings: " + e.message);
     }
 };
 

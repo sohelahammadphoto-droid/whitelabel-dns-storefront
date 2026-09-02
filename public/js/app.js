@@ -924,6 +924,34 @@ function downloadIosProfile(clientId, dotDomain) {
 // ----------------------------------------------------
 // Order Modal Handling & Coupon Validation
 // ----------------------------------------------------
+let currentPaymentMode = "manual";
+
+function switchPaymentMode(mode) {
+    currentPaymentMode = mode;
+    const btnAuto = document.getElementById("btn-mode-auto");
+    const btnManual = document.getElementById("btn-mode-manual");
+    const autoNotice = document.getElementById("auto-payment-notice");
+    const manualFields = document.getElementById("manual-payment-fields");
+    const submitBtn = document.getElementById("order-submit-btn");
+    const trxInput = document.getElementById("order-trx");
+
+    if (mode === "auto") {
+        if (btnAuto) btnAuto.classList.add("active");
+        if (btnManual) btnManual.classList.remove("active");
+        if (autoNotice) autoNotice.style.display = "block";
+        if (manualFields) manualFields.style.display = "none";
+        if (submitBtn) submitBtn.textContent = "⚡ Pay with UddoktaPay & Activate Instant DNS";
+        if (trxInput) trxInput.removeAttribute("required");
+    } else {
+        if (btnAuto) btnAuto.classList.remove("active");
+        if (btnManual) btnManual.classList.add("active");
+        if (autoNotice) autoNotice.style.display = "none";
+        if (manualFields) manualFields.style.display = "block";
+        if (submitBtn) submitBtn.textContent = "Confirm & Submit Order";
+        if (trxInput) trxInput.setAttribute("required", "true");
+    }
+}
+
 function openOrderModal(planId) {
     if (!siteConfig || !siteConfig.plans) return;
     currentPlan = siteConfig.plans.find(p => p.id === planId) || siteConfig.plans[0];
@@ -934,12 +962,22 @@ function openOrderModal(planId) {
     const couponInput = document.getElementById("order-coupon-code");
     const couponMsg = document.getElementById("coupon-status-msg");
     const couponBadge = document.getElementById("coupon-applied-badge");
+    const modeContainer = document.getElementById("payment-mode-container");
 
     if (planIdEl) planIdEl.value = currentPlan.id;
     if (planTitleEl) planTitleEl.textContent = `Order ${currentPlan.name}`;
     if (couponInput) couponInput.value = "";
     if (couponMsg) couponMsg.style.display = "none";
     if (couponBadge) couponBadge.style.display = "none";
+
+    // Setup payment mode according to gateway availability
+    if (siteConfig && siteConfig.uddoktapay_enabled) {
+        if (modeContainer) modeContainer.style.display = "block";
+        switchPaymentMode("auto");
+    } else {
+        if (modeContainer) modeContainer.style.display = "none";
+        switchPaymentMode("manual");
+    }
 
     updateOrderModalPrice();
 
@@ -1038,7 +1076,6 @@ async function submitOrder(e) {
     e.preventDefault();
     const btn = document.getElementById("order-submit-btn");
     btn.disabled = true;
-    btn.textContent = "Processing Order...";
 
     const antiBot = await generateAntiBotPayload();
     const curr = getCurrencyDetails();
@@ -1059,8 +1096,8 @@ async function submitOrder(e) {
         customer_name: document.getElementById("order-name").value.trim(),
         customer_phone: document.getElementById("order-phone").value.trim(),
         customer_email: document.getElementById("order-email").value.trim(),
-        payment_method: document.getElementById("order-payment-method").value,
-        trx_id: document.getElementById("order-trx").value.trim()
+        payment_method: document.getElementById("order-payment-method")?.value || "UddoktaPay",
+        trx_id: document.getElementById("order-trx")?.value.trim() || ""
     };
 
     const headers = { "Content-Type": "application/json" };
@@ -1068,6 +1105,33 @@ async function submitOrder(e) {
         headers["Authorization"] = `Bearer ${customerToken}`;
     }
 
+    // ⚡ 1. Automated Gateway Checkout (UddoktaPay)
+    if (currentPaymentMode === "auto") {
+        btn.textContent = "Redirecting to Payment Gateway...";
+        try {
+            const res = await fetch("/api/payment/uddoktapay/checkout", {
+                method: "POST",
+                headers: headers,
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success && data.payment_url) {
+                window.location.href = data.payment_url;
+                return;
+            } else {
+                alert("❌ " + (data.error || "Automated payment initialization failed"));
+            }
+        } catch (err) {
+            alert("❌ Connection error: " + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "⚡ Pay with UddoktaPay & Activate Instant DNS";
+        }
+        return;
+    }
+
+    // 📝 2. Manual Send Money Checkout
+    btn.textContent = "Processing Order...";
     try {
         const res = await fetch("/api/order", {
             method: "POST",

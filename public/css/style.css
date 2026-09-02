@@ -1539,3 +1539,29 @@ select.form-control {
     border: 1px solid rgba(148, 163, 184, 0.35);
 }
 
+/* Payment Mode Selector Buttons */
+.btn-payment-mode {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    line-height: 1.4;
+    transition: all 0.2s ease;
+}
+.btn-payment-mode:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+    color: #fff;
+}
+.btn-payment-mode.active {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: #38bdf8;
+    color: #38bdf8;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+}
+
+

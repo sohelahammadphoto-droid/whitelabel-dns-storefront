@@ -150,7 +150,12 @@ export async function onRequestGet(context) {
         turnstile_site_key: s.turnstile_site_key || "",
         turnstile_secret_key: s.turnstile_secret_key || "",
 
-        // --- 19. Payment Methods ---
+        // --- 19. Automated Payment Gateway (UddoktaPay) ---
+        uddoktapay_enabled: s.uddoktapay_enabled !== undefined ? Boolean(s.uddoktapay_enabled) : false,
+        uddoktapay_api_key: s.uddoktapay_api_key || "",
+        uddoktapay_base_url: s.uddoktapay_base_url || "",
+
+        // --- 20. Manual Payment Methods ---
         payment_methods: s.payment_methods || [
             { id: "stcpay", name: "STC Pay", number: "0501234567", account_name: "Personal", instructions: "Send to this STC Pay number & copy TrxID." },
             { id: "urpay", name: "Urpay", number: "0501234567", account_name: "Personal", instructions: "Send via Urpay & copy TrxID." },

@@ -12,6 +12,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     loadStoreBranding();
     fetchDashboardData();
+
+    // Check for payment success banner
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("payment") === "success") {
+        const orderId = urlParams.get("order_id");
+        setTimeout(() => {
+            alert(`🎉 Payment Successful!\n\nYour order (${orderId || ''}) has been verified. Your Private DNS is active and ready to use.`);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }, 600);
+    }
 });
 
 // Load Store Branding
