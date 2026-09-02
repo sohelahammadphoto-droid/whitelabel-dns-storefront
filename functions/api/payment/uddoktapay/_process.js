@@ -86,9 +86,9 @@ export async function processCompletedPayment(env, paymentData) {
 
     if (resellerApiKey) {
         try {
-            const randSuffix = Math.floor(1000 + Math.random() * 9000);
-            const cleanPhone = (customerPhone || "").replace(/\D/g, "").slice(-4);
-            const suggestedUsername = `u${cleanPhone || randSuffix}`;
+            // Standard format: u + 7-digit random number (e.g. u7492810)
+            const rand7 = Math.floor(1000000 + Math.random() * 9000000);
+            const suggestedUsername = `u${rand7}`;
 
             const createRes = await fetch(`${mainApiUrl}/api/v1/client/create`, {
                 method: "POST",
