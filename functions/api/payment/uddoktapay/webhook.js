@@ -1,6 +1,6 @@
 // functions/api/payment/uddoktapay/webhook.js — IPN Webhook & Instant DNS Auto-Provisioning
 import { initDb, getSetting, getResellerApiKey, getMainApiUrl, json, handleOptions } from "../../_db.js";
-import { sendCustomerOrderApprovalEmail } from "../../_email.js";
+import { sendOrderApprovedEmail } from "../../_email.js";
 
 export async function onRequestOptions() {
     return handleOptions();
@@ -157,11 +157,11 @@ export async function onRequestPost(context) {
 
         // Send Email Confirmation if configured
         if (order.customer_email && autoProvisionSuccess) {
-            sendCustomerOrderApprovalEmail(env, {
-                ...order,
-                client_id: clientId,
-                dns_url: dnsUrl,
-                expire_date: expireDate
+            sendOrderApprovedEmail(env, order.customer_email, order.customer_name, {
+                clientId: clientId,
+                dnsUrl: dnsUrl,
+                durationDays: order.duration_days || 30,
+                expireDate: expireDate
             }).catch(() => {});
         }
 
