@@ -205,8 +205,18 @@
 
             <!-- TAB: 💳 PAYMENT METHODS & NUMBERS MANAGER -->
             <div id="tab-payments" class="tab-content" style="display: none;">
-                <!-- 1. Automated Gateway (UddoktaPay) -->
-                <div class="card-box" style="max-width: 860px; margin-bottom: 25px; border-color: rgba(56, 189, 248, 0.4);">
+                <!-- Payment Sub-Nav Tabs -->
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
+                    <button type="button" id="pay-subtab-auto-btn" class="btn btn-primary btn-sm" style="font-weight: 700;" onclick="switchPaymentSubTab('auto')">
+                        ⚡ 1. Automated Gateway (UddoktaPay)
+                    </button>
+                    <button type="button" id="pay-subtab-manual-btn" class="btn btn-secondary btn-sm" style="font-weight: 700;" onclick="switchPaymentSubTab('manual')">
+                        📝 2. Manual Methods (bKash, Nagad, STC Pay)
+                    </button>
+                </div>
+
+                <!-- 1. Automated Gateway (UddoktaPay) Sub-Tab -->
+                <div id="pay-subtab-auto" class="card-box" style="max-width: 860px; border-color: rgba(56, 189, 248, 0.4);">
                     <div class="box-header">
                         <div>
                             <div class="box-title" style="color: #38bdf8; display: flex; align-items: center; gap: 8px;">
@@ -223,29 +233,25 @@
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 15px;">
                         <div class="form-group">
                             <label class="form-label" style="font-weight: 700; color: #cbd5e1;">UddoktaPay API Key</label>
-                            <input type="password" id="setting-uddoktapay-apikey" class="form-control" placeholder="e.g. 98327a3c8e9b...">
+                            <input type="password" id="setting-uddoktapay-apikey" class="form-control" placeholder="Paste your API key here">
                             <span style="font-size: 11px; color: var(--text-muted);">Found in UddoktaPay Panel ➔ Settings ➔ API</span>
                         </div>
                         <div class="form-group">
                             <label class="form-label" style="font-weight: 700; color: #cbd5e1;">Gateway Base URL / Panel URL</label>
-                            <input type="text" id="setting-uddoktapay-baseurl" class="form-control" placeholder="e.g. https://pay.yourdomain.com or https://sandbox.uddoktapay.com">
-                            <span style="font-size: 11px; color: var(--text-muted);">Your UddoktaPay domain without trailing slash</span>
+                            <input type="text" id="setting-uddoktapay-baseurl" class="form-control" placeholder="e.g. https://instantbazar.paymently.io/api">
+                            <span style="font-size: 11px; color: var(--text-muted);">Your UddoktaPay domain / Base API URL</span>
                         </div>
                     </div>
 
-                    <div style="margin-top: 14px; padding: 10px 14px; background: rgba(56, 189, 248, 0.08); border-radius: 6px; border: 1px dashed rgba(56, 189, 248, 0.3); font-size: 12px; color: #94a3b8;">
-                        💡 <b>Webhook URL:</b> Copy this into UddoktaPay Webhook setting: <code style="color: #38bdf8; word-break: break-all;" id="uddoktapay-webhook-url">/api/payment/uddoktapay/webhook</code>
-                    </div>
-
-                    <div style="margin-top: 15px; display: flex; justify-content: flex-end;">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="saveUddoktaPaySettings()">
+                    <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                        <button type="button" class="btn btn-primary" onclick="saveUddoktaPaySettings()">
                             💾 Save UddoktaPay Gateway
                         </button>
                     </div>
                 </div>
 
-                <!-- 2. Manual Payment Methods & Numbers -->
-                <div class="card-box" style="max-width: 860px;">
+                <!-- 2. Manual Payment Methods & Numbers Sub-Tab -->
+                <div id="pay-subtab-manual" class="card-box" style="max-width: 860px; display: none;">
                     <div class="box-header">
                         <div>
                             <div class="box-title">📝 Manual Payment Methods & Accounts</div>

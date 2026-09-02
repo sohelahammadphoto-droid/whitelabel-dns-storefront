@@ -604,6 +604,25 @@ window.deletePaymentMethod = function(idx) {
     }
 };
 
+window.switchPaymentSubTab = function(subTab) {
+    const autoBox = document.getElementById("pay-subtab-auto");
+    const manualBox = document.getElementById("pay-subtab-manual");
+    const autoBtn = document.getElementById("pay-subtab-auto-btn");
+    const manualBtn = document.getElementById("pay-subtab-manual-btn");
+
+    if (subTab === "auto") {
+        if (autoBox) autoBox.style.display = "block";
+        if (manualBox) manualBox.style.display = "none";
+        if (autoBtn) autoBtn.className = "btn btn-primary btn-sm";
+        if (manualBtn) manualBtn.className = "btn btn-secondary btn-sm";
+    } else {
+        if (autoBox) autoBox.style.display = "none";
+        if (manualBox) manualBox.style.display = "block";
+        if (autoBtn) autoBtn.className = "btn btn-secondary btn-sm";
+        if (manualBtn) manualBtn.className = "btn btn-primary btn-sm";
+    }
+};
+
 window.saveUddoktaPaySettings = async function() {
     const isEnabled = document.getElementById("setting-uddoktapay-enabled")?.checked || false;
     const apiKey = document.getElementById("setting-uddoktapay-apikey")?.value.trim() || "";
