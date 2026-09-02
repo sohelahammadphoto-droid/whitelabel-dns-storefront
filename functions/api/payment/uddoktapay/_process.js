@@ -1,6 +1,47 @@
 // functions/api/payment/uddoktapay/_process.js — Shared Order Provisioning & Status Handler
-import { getSetting, getResellerApiKey, getMainApiUrl } from "../../_db.js";
+import { getSetting, getAllSettings, getResellerApiKey, getMainApiUrl } from "../../_db.js";
 import { sendOrderApprovedEmail } from "../../_email.js";
+
+function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+}
+
+async function getTelegramConfig(env) {
+    let token = "";
+    let chatId = "";
+
+    if (env.DB) {
+        try {
+            const tokenRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'telegram_bot_token'").first();
+            if (tokenRow && tokenRow.value) {
+                token = String(tokenRow.value).replace(/^["']|["']$/g, "").trim();
+            }
+            const chatRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'telegram_chat_id'").first();
+            if (chatRow && chatRow.value) {
+                chatId = String(chatRow.value).replace(/^["']|["']$/g, "").trim();
+            }
+        } catch (e) {
+            console.error("D1 Telegram config error:", e);
+        }
+    }
+
+    if (!token || !chatId) {
+        try {
+            const s = await getAllSettings(env);
+            if (!token && s.telegram_bot_token) token = String(s.telegram_bot_token).replace(/^["']|["']$/g, "").trim();
+            if (!chatId && s.telegram_chat_id) chatId = String(s.telegram_chat_id).replace(/^["']|["']$/g, "").trim();
+        } catch (_) {}
+    }
+
+    if (!token && env.TELEGRAM_BOT_TOKEN) token = String(env.TELEGRAM_BOT_TOKEN).trim();
+    if (!chatId && env.TELEGRAM_CHAT_ID) chatId = String(env.TELEGRAM_CHAT_ID).trim();
+
+    return { token, chatId };
+}
 
 export async function processCompletedPayment(env, paymentData) {
     const metadata = paymentData.metadata || {};
@@ -64,7 +105,7 @@ export async function processCompletedPayment(env, paymentData) {
                 expireDate = client.expires_at || client.expire_date || "";
                 autoProvisionSuccess = true;
             } else {
-                console.warn("Main API auto-provision failed (likely low balance/credit):", createData);
+                console.warn("Main API auto-provision failed (e.g. low balance or offline):", createData);
             }
         } catch (err) {
             console.error("Error communicating with main API:", err);
@@ -96,35 +137,58 @@ export async function processCompletedPayment(env, paymentData) {
         `).bind(trxId, `UddoktaPay (${paymentMethod})`, orderId).run();
     }
 
-    // Send Telegram Notification to Admin
+    // 📢 Send Telegram Notification to Admin (AWAITED & HTML FORMATTED)
     try {
-        const botToken = await getSetting(env, "telegram_bot_token", "");
-        const chatId = await getSetting(env, "telegram_chat_id", "");
+        const { token: botToken, chatId } = await getTelegramConfig(env);
         if (botToken && chatId) {
+            const siteName = (await getSetting(env, "site_name", "UltraDNS Pro")) || "DNS Store";
+            
             const teleMsg = autoProvisionSuccess ?
-                `⚡ *NEW AUTO-PAID ORDER PROVISIONED!*\n\n` +
-                `📦 *Order ID:* \`${orderId}\`\n` +
-                `👤 *Customer:* ${order.customer_name} (${order.customer_phone})\n` +
-                `💳 *Method:* UddoktaPay (${paymentMethod})\n` +
-                `💰 *Amount:* ${order.amount} ${order.currency}\n` +
-                `🆔 *DNS PIN:* \`${clientId}\`\n` +
-                `🌐 *Host:* \`${dnsUrl}\`\n` +
-                `⏳ *Expires:* ${expireDate || 'Active'}`
+                `⚡ <b>NEW AUTO-PAID ORDER PROVISIONED!</b>\n` +
+                `━━━━━━━━━━━━━━━━━━━\n` +
+                `🆔 <b>Order ID:</b> <code>${escapeHtml(orderId)}</code>\n` +
+                `👤 <b>Customer:</b> ${escapeHtml(order.customer_name)} (<code>${escapeHtml(order.customer_phone)}</code>)\n` +
+                `💳 <b>Method:</b> UddoktaPay (${escapeHtml(paymentMethod)})\n` +
+                `📝 <b>TrxID:</b> <code>${escapeHtml(trxId)}</code>\n` +
+                `💰 <b>Amount:</b> <b>${order.amount} ${escapeHtml(order.currency || 'BDT')}</b>\n` +
+                `🔑 <b>DNS PIN:</b> <code>${escapeHtml(clientId)}</code>\n` +
+                `🌐 <b>Host:</b> <code>${escapeHtml(dnsUrl)}</code>\n` +
+                `⏳ <b>Expires:</b> ${escapeHtml(expireDate || 'Active')}\n` +
+                `━━━━━━━━━━━━━━━━━━━\n` +
+                `🏪 <b>Store:</b> ${escapeHtml(siteName)}`
                 :
-                `⚠️ *AUTO-PAID ORDER RECEIVED (CREDIT LOW / ACTION NEEDED)*\n\n` +
-                `📦 *Order ID:* \`${orderId}\`\n` +
-                `👤 *Customer:* ${order.customer_name} (${order.customer_phone})\n` +
-                `💰 *Amount:* ${order.amount} ${order.currency}\n` +
-                `💳 *Payment:* UddoktaPay (${trxId})\n` +
-                `📢 *Action Required:* Please assign DNS PIN from Admin Panel.`;
+                `⚠️ <b>AUTO-PAID ORDER RECEIVED (ACTION REQUIRED)</b>\n` +
+                `━━━━━━━━━━━━━━━━━━━\n` +
+                `🆔 <b>Order ID:</b> <code>${escapeHtml(orderId)}</code>\n` +
+                `👤 <b>Customer:</b> ${escapeHtml(order.customer_name)} (<code>${escapeHtml(order.customer_phone)}</code>)\n` +
+                `💳 <b>Method:</b> UddoktaPay (${escapeHtml(paymentMethod)})\n` +
+                `📝 <b>TrxID:</b> <code>${escapeHtml(trxId)}</code>\n` +
+                `💰 <b>Amount:</b> <b>${order.amount} ${escapeHtml(order.currency || 'BDT')}</b>\n` +
+                `📢 <b>Status:</b> <b>Payment Verified!</b> (VPS low credit / offline)\n` +
+                `⚡ <i>Please click Approve in Admin Panel to issue DNS PIN.</i>\n` +
+                `━━━━━━━━━━━━━━━━━━━\n` +
+                `🏪 <b>Store:</b> ${escapeHtml(siteName)}`;
 
-            fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: chatId, text: teleMsg, parse_mode: "Markdown" })
-            }).catch(() => {});
+                headers: {
+                    "Content-Type": "application/json",
+                    "User-Agent": "ResellerStorefront/1.0"
+                },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text: teleMsg,
+                    parse_mode: "HTML"
+                })
+            });
+            const tgJson = await tgRes.json();
+            if (!tgJson.ok) {
+                console.error("Telegram delivery response:", tgJson);
+            }
         }
-    } catch (_) {}
+    } catch (err) {
+        console.error("Telegram alert error in _process.js:", err);
+    }
 
     // Send Email Confirmation if configured
     if (order.customer_email && autoProvisionSuccess) {
