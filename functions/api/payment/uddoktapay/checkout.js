@@ -1,5 +1,5 @@
 // functions/api/payment/uddoktapay/checkout.js — Automated Checkout Session Initializer
-import { initDb, getSetting, getAllSettings, verifyCustomerAuth, json, handleOptions } from "../../_db.js";
+import { initDb, getSetting, verifyCustomerAuth, json, handleOptions } from "../../_db.js";
 import { verifyAntiBot } from "../../_antibot.js";
 
 export async function onRequestOptions() {
@@ -11,54 +11,9 @@ export async function onRequest(context) {
     return onRequestPost(context);
 }
 
-function escapeHtml(str) {
-    if (!str) return "";
-    return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-}
-
-async function getTelegramConfig(env) {
-    let token = "";
-    let chatId = "";
-
-    if (env.DB) {
-        try {
-            const tokenRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'telegram_bot_token'").first();
-            if (tokenRow && tokenRow.value) {
-                token = String(tokenRow.value).replace(/^["']|["']$/g, "").trim();
-            }
-            const chatRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'telegram_chat_id'").first();
-            if (chatRow && chatRow.value) {
-                chatId = String(chatRow.value).replace(/^["']|["']$/g, "").trim();
-            }
-        } catch (e) {
-            console.error("D1 Telegram config error in checkout.js:", e);
-        }
-    }
-
-    if (!token || !chatId) {
-        try {
-            const s = await getAllSettings(env);
-            if (!token && s.telegram_bot_token) token = String(s.telegram_bot_token).replace(/^["']|["']$/g, "").trim();
-            if (!chatId && s.telegram_chat_id) chatId = String(s.telegram_chat_id).replace(/^["']|["']$/g, "").trim();
-        } catch (_) {}
-    }
-
-    if (!token && env.TELEGRAM_BOT_TOKEN) token = String(env.TELEGRAM_BOT_TOKEN).trim();
-    if (!chatId && env.TELEGRAM_CHAT_ID) chatId = String(env.TELEGRAM_CHAT_ID).trim();
-
-    return { token, chatId };
-}
-
 export async function onRequestPost(context) {
     const { request, env } = context;
     await initDb(env);
-
-    if (!env.DB) {
-        return json({ success: false, error: "Database not configured" }, 500);
-    }
 
     try {
         const body = await request.json();
@@ -113,56 +68,7 @@ export async function onRequestPost(context) {
         const randId = Math.random().toString(36).substring(2, 8).toUpperCase();
         const orderId = `ORD-${randId}`;
 
-        // Create pending order in D1
-        await env.DB.prepare(`
-            INSERT INTO orders (
-                order_id, customer_id, customer_name, customer_phone, customer_email,
-                plan_id, plan_name, duration_days, amount, currency,
-                payment_method, trx_id, status, admin_note
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'UddoktaPay (Auto)', 'PENDING-AUTO', 'pending', ?)
-        `).bind(
-            orderId, customerId, customerName, customerPhone, customerEmail,
-            planId, planName, durationDays, amount, currency,
-            couponCode ? `Coupon: ${couponCode}` : 'Awaiting UddoktaPay Confirmation'
-        ).run();
-
-        // 📢 Send immediate Telegram notification for the new order initiation (Awaited HTML)
-        try {
-            const { token: botToken, chatId } = await getTelegramConfig(env);
-            if (botToken && chatId) {
-                const siteName = (await getSetting(env, "site_name", "UltraDNS Pro")) || "DNS Store";
-                const teleMsg = `🚨 <b>New Store Order Initiated!</b>\n` +
-                    `━━━━━━━━━━━━━━━━━━━\n` +
-                    `🆔 <b>Order ID:</b> <code>${escapeHtml(orderId)}</code>\n` +
-                    `👤 <b>Customer:</b> ${escapeHtml(customerName)}\n` +
-                    `📞 <b>Phone:</b> <code>${escapeHtml(customerPhone)}</code>\n` +
-                    (customerEmail ? `📧 <b>Email:</b> ${escapeHtml(customerEmail)}\n` : '') +
-                    `📦 <b>Plan:</b> ${escapeHtml(planName)} (${durationDays} Days)\n` +
-                    `💰 <b>Amount:</b> <b>${amount} ${escapeHtml(currency)}</b>\n` +
-                    `💳 <b>Method:</b> UddoktaPay (Auto Checkout)\n` +
-                    (couponCode ? `🎟️ <b>Coupon:</b> <code>${escapeHtml(couponCode)}</code>\n` : '') +
-                    `━━━━━━━━━━━━━━━━━━━\n` +
-                    `🏪 <b>Store:</b> ${escapeHtml(siteName)}\n` +
-                    `⏳ <i>Customer redirected to payment gateway...</i>`;
-
-                await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "User-Agent": "ResellerStorefront/1.0"
-                    },
-                    body: JSON.stringify({
-                        chat_id: chatId,
-                        text: teleMsg,
-                        parse_mode: "HTML"
-                    })
-                });
-            }
-        } catch (tgErr) {
-            console.error("Telegram initial order notification error:", tgErr);
-        }
-
-        // Prepare UddoktaPay Checkout Payload
+        // Prepare UddoktaPay Checkout Payload with complete metadata
         const urlObj = new URL(request.url);
         const origin = `${urlObj.protocol}//${urlObj.host}`;
 
@@ -172,11 +78,16 @@ export async function onRequestPost(context) {
             amount: amount,
             metadata: {
                 order_id: orderId,
+                customer_name: customerName,
+                customer_phone: customerPhone,
+                customer_email: customerEmail,
+                customer_id: customerId ? String(customerId) : "",
                 plan_id: planId,
                 plan_name: planName,
                 duration_days: durationDays,
-                customer_phone: customerPhone,
-                customer_id: customerId || ""
+                amount: amount,
+                currency: currency,
+                coupon_code: couponCode
             },
             redirect_url: `${origin}/api/payment/uddoktapay/return?order_id=${encodeURIComponent(orderId)}`,
             cancel_url: `${origin}/#plans`,

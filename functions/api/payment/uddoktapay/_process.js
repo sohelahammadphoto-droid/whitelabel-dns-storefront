@@ -46,6 +46,16 @@ async function getTelegramConfig(env) {
 export async function processCompletedPayment(env, paymentData) {
     const metadata = paymentData.metadata || {};
     const orderId = (metadata.order_id || paymentData.order_id || "").trim();
+    const customerName = (metadata.customer_name || paymentData.full_name || paymentData.name || "Valued Customer").trim();
+    const customerPhone = (metadata.customer_phone || paymentData.phone_number || "").trim();
+    const customerEmail = (metadata.customer_email || paymentData.email || "").trim().toLowerCase();
+    const customerId = metadata.customer_id ? parseInt(metadata.customer_id, 10) : null;
+    const planId = (metadata.plan_id || "1m").trim();
+    const planName = (metadata.plan_name || "Private DNS Pass").trim();
+    const durationDays = parseInt(metadata.duration_days || 30, 10);
+    const amount = parseFloat(metadata.amount || paymentData.amount || 0);
+    const currency = (metadata.currency || "BDT").trim();
+    const couponCode = (metadata.coupon_code || "").trim();
     const trxId = (paymentData.transaction_id || paymentData.invoice_id || "UDDOKTA-PAID").trim();
     const paymentMethod = paymentData.payment_method || "UddoktaPay";
 
@@ -57,15 +67,12 @@ export async function processCompletedPayment(env, paymentData) {
         return { success: false, error: "Database not configured" };
     }
 
-    // Fetch order from D1
-    const order = await env.DB.prepare("SELECT * FROM orders WHERE order_id = ?").bind(orderId).first();
-    if (!order) {
-        return { success: false, error: `Order ${orderId} not found` };
-    }
-
-    // Idempotency: If already approved, return success
-    if (order.status === "approved" && order.client_id) {
-        return { success: true, message: "Order already provisioned", client_id: order.client_id };
+    // Check if order already exists in D1
+    const existingOrder = await env.DB.prepare("SELECT * FROM orders WHERE order_id = ? OR trx_id = ?").bind(orderId, trxId).first();
+    
+    // Idempotency: If already approved and has DNS PIN, do not re-provision
+    if (existingOrder && existingOrder.status === "approved" && existingOrder.client_id) {
+        return { success: true, message: "Order already provisioned", client_id: existingOrder.client_id };
     }
 
     // 🚀 Attempt Auto-Provisioning on Main Server
@@ -80,7 +87,7 @@ export async function processCompletedPayment(env, paymentData) {
     if (resellerApiKey) {
         try {
             const randSuffix = Math.floor(1000 + Math.random() * 9000);
-            const cleanPhone = (order.customer_phone || "").replace(/\D/g, "").slice(-4);
+            const cleanPhone = (customerPhone || "").replace(/\D/g, "").slice(-4);
             const suggestedUsername = `u${cleanPhone || randSuffix}`;
 
             const createRes = await fetch(`${mainApiUrl}/api/v1/client/create`, {
@@ -91,8 +98,8 @@ export async function processCompletedPayment(env, paymentData) {
                 },
                 body: JSON.stringify({
                     username: suggestedUsername,
-                    duration_days: order.duration_days || 30,
-                    phone: order.customer_phone || "",
+                    duration_days: durationDays,
+                    phone: customerPhone,
                     note: `UddoktaPay (${orderId} - ${trxId})`
                 })
             });
@@ -112,29 +119,36 @@ export async function processCompletedPayment(env, paymentData) {
         }
     }
 
-    // Update Order in D1
-    if (autoProvisionSuccess) {
+    const finalStatus = autoProvisionSuccess ? 'approved' : 'paid_pending_provision';
+    const adminNote = autoProvisionSuccess ? 
+        'Instant Auto-Provisioned via UddoktaPay' : 
+        'Payment Completed via UddoktaPay. Manual DNS Key assignment needed.';
+
+    // Save into D1 (Insert new or Update existing)
+    if (existingOrder) {
         await env.DB.prepare(`
             UPDATE orders 
-            SET status = 'approved',
+            SET status = ?,
                 trx_id = ?,
                 payment_method = ?,
                 client_id = ?,
                 dns_url = ?,
                 expire_date = ?,
-                admin_note = 'Instant Auto-Provisioned via UddoktaPay'
+                admin_note = ?
             WHERE order_id = ?
-        `).bind(trxId, `UddoktaPay (${paymentMethod})`, clientId, dnsUrl, expireDate, orderId).run();
+        `).bind(finalStatus, trxId, `UddoktaPay (${paymentMethod})`, clientId, dnsUrl, expireDate, adminNote, existingOrder.order_id).run();
     } else {
-        // Payment verified but manual provision needed (e.g. reseller out of credits / VPS offline)
         await env.DB.prepare(`
-            UPDATE orders 
-            SET status = 'paid_pending_provision',
-                trx_id = ?,
-                payment_method = ?,
-                admin_note = 'Payment Completed via UddoktaPay. Manual DNS Key assignment needed.'
-            WHERE order_id = ?
-        `).bind(trxId, `UddoktaPay (${paymentMethod})`, orderId).run();
+            INSERT INTO orders (
+                order_id, customer_id, customer_name, customer_phone, customer_email,
+                plan_id, plan_name, duration_days, amount, currency,
+                payment_method, trx_id, status, client_id, dns_url, expire_date, admin_note
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+            orderId, customerId, customerName, customerPhone, customerEmail,
+            planId, planName, durationDays, amount, currency,
+            `UddoktaPay (${paymentMethod})`, trxId, finalStatus, clientId, dnsUrl, expireDate, adminNote
+        ).run();
     }
 
     // 📢 Send Telegram Notification to Admin (AWAITED & HTML FORMATTED)
@@ -147,10 +161,10 @@ export async function processCompletedPayment(env, paymentData) {
                 `⚡ <b>NEW AUTO-PAID ORDER PROVISIONED!</b>\n` +
                 `━━━━━━━━━━━━━━━━━━━\n` +
                 `🆔 <b>Order ID:</b> <code>${escapeHtml(orderId)}</code>\n` +
-                `👤 <b>Customer:</b> ${escapeHtml(order.customer_name)} (<code>${escapeHtml(order.customer_phone)}</code>)\n` +
+                `👤 <b>Customer:</b> ${escapeHtml(customerName)} (<code>${escapeHtml(customerPhone)}</code>)\n` +
                 `💳 <b>Method:</b> UddoktaPay (${escapeHtml(paymentMethod)})\n` +
                 `📝 <b>TrxID:</b> <code>${escapeHtml(trxId)}</code>\n` +
-                `💰 <b>Amount:</b> <b>${order.amount} ${escapeHtml(order.currency || 'BDT')}</b>\n` +
+                `💰 <b>Amount:</b> <b>${amount} ${escapeHtml(currency)}</b>\n` +
                 `🔑 <b>DNS PIN:</b> <code>${escapeHtml(clientId)}</code>\n` +
                 `🌐 <b>Host:</b> <code>${escapeHtml(dnsUrl)}</code>\n` +
                 `⏳ <b>Expires:</b> ${escapeHtml(expireDate || 'Active')}\n` +
@@ -160,16 +174,16 @@ export async function processCompletedPayment(env, paymentData) {
                 `⚠️ <b>AUTO-PAID ORDER RECEIVED (ACTION REQUIRED)</b>\n` +
                 `━━━━━━━━━━━━━━━━━━━\n` +
                 `🆔 <b>Order ID:</b> <code>${escapeHtml(orderId)}</code>\n` +
-                `👤 <b>Customer:</b> ${escapeHtml(order.customer_name)} (<code>${escapeHtml(order.customer_phone)}</code>)\n` +
+                `👤 <b>Customer:</b> ${escapeHtml(customerName)} (<code>${escapeHtml(customerPhone)}</code>)\n` +
                 `💳 <b>Method:</b> UddoktaPay (${escapeHtml(paymentMethod)})\n` +
                 `📝 <b>TrxID:</b> <code>${escapeHtml(trxId)}</code>\n` +
-                `💰 <b>Amount:</b> <b>${order.amount} ${escapeHtml(order.currency || 'BDT')}</b>\n` +
+                `💰 <b>Amount:</b> <b>${amount} ${escapeHtml(currency)}</b>\n` +
                 `📢 <b>Status:</b> <b>Payment Verified!</b> (VPS low credit / offline)\n` +
                 `⚡ <i>Please click Approve in Admin Panel to issue DNS PIN.</i>\n` +
                 `━━━━━━━━━━━━━━━━━━━\n` +
                 `🏪 <b>Store:</b> ${escapeHtml(siteName)}`;
 
-            const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -181,21 +195,17 @@ export async function processCompletedPayment(env, paymentData) {
                     parse_mode: "HTML"
                 })
             });
-            const tgJson = await tgRes.json();
-            if (!tgJson.ok) {
-                console.error("Telegram delivery response:", tgJson);
-            }
         }
     } catch (err) {
         console.error("Telegram alert error in _process.js:", err);
     }
 
     // Send Email Confirmation if configured
-    if (order.customer_email && autoProvisionSuccess) {
-        sendOrderApprovedEmail(env, order.customer_email, order.customer_name, {
+    if (customerEmail && autoProvisionSuccess) {
+        sendOrderApprovedEmail(env, customerEmail, customerName, {
             clientId: clientId,
             dnsUrl: dnsUrl,
-            durationDays: order.duration_days || 30,
+            durationDays: durationDays,
             expireDate: expireDate
         }).catch(() => {});
     }
@@ -204,7 +214,7 @@ export async function processCompletedPayment(env, paymentData) {
         success: true,
         order_id: orderId,
         auto_provisioned: autoProvisionSuccess,
-        status: autoProvisionSuccess ? 'approved' : 'paid_pending_provision',
+        status: finalStatus,
         client_id: clientId,
         dns_url: dnsUrl
     };
