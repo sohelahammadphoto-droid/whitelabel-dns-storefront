@@ -75,14 +75,14 @@ export async function onRequestPost(context) {
         // Create pending order in D1
         await env.DB.prepare(`
             INSERT INTO orders (
-                order_id, customer_name, customer_phone, customer_email,
+                order_id, customer_id, customer_name, customer_phone, customer_email,
                 plan_id, plan_name, duration_days, amount, currency,
-                payment_method, trx_id, coupon_code, status, customer_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'UddoktaPay (Auto)', 'PENDING-AUTO', ?, 'pending', ?)
+                payment_method, trx_id, status, admin_note
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'UddoktaPay (Auto)', 'PENDING-AUTO', 'pending', ?)
         `).bind(
-            orderId, customerName, customerPhone, customerEmail,
+            orderId, customerId, customerName, customerPhone, customerEmail,
             planId, planName, durationDays, amount, currency,
-            couponCode, customerId
+            couponCode ? `Coupon: ${couponCode}` : 'Awaiting UddoktaPay Confirmation'
         ).run();
 
         // Prepare UddoktaPay Checkout Payload

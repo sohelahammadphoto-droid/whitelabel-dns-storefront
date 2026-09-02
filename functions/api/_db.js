@@ -99,6 +99,9 @@ export async function initDb(env) {
         try {
             await env.DB.prepare("ALTER TABLE orders ADD COLUMN customer_id INTEGER").run();
         } catch (_) {}
+        try {
+            await env.DB.prepare("ALTER TABLE orders ADD COLUMN coupon_code TEXT").run();
+        } catch (_) {}
 
         return true;
     } catch (e) {
