@@ -37,8 +37,11 @@ export async function onRequestPost(context) {
             return json({ success: false, error: "Automated payment gateway is currently unavailable. Please choose manual payment or contact support." }, 400);
         }
 
-        // Sanitize Base URL (remove trailing slash and trailing /api/checkout-v2 if accidentally pasted)
-        baseUrl = baseUrl.replace(/\/+$/, "").replace(/\/api\/checkout-v2\/?$/, "");
+        // Sanitize Base URL (handles root domain, /api, /api/checkout, or /api/checkout-v2)
+        baseUrl = baseUrl.replace(/\/+$/, "")
+                         .replace(/\/api\/checkout-v2\/?$/i, "")
+                         .replace(/\/api\/checkout\/?$/i, "")
+                         .replace(/\/api\/?$/i, "");
 
         const customerName = (body.customer_name || "Valued Customer").trim();
         const customerPhone = (body.customer_phone || "").trim();
