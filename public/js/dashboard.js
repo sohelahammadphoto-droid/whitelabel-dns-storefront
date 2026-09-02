@@ -242,12 +242,30 @@ function renderOrderHistory(orders) {
         return;
     }
 
-    container.innerHTML = orders.map(o => `
+    const getFriendlyStatus = (status) => {
+        switch(status) {
+            case 'approved': return { label: '✓ Active', cls: 'badge-approved' };
+            case 'paid_pending_provision': return { label: '⚡ Paid • Activating...', cls: 'badge-paid_pending_provision' };
+            case 'pending': return { label: '⏳ Verification Pending', cls: 'badge-pending' };
+            case 'rejected': return { label: '✕ Rejected', cls: 'badge-rejected' };
+            case 'banned': return { label: '🚫 Suspended', cls: 'badge-banned' };
+            case 'expired': return { label: 'Expired', cls: 'badge-expired' };
+            default: return { label: String(status).replace(/_/g, ' ').toUpperCase(), cls: 'badge-pending' };
+        }
+    };
+
+    container.innerHTML = orders.map(o => {
+        const sInfo = getFriendlyStatus(o.status);
+        const displayNote = o.status === 'paid_pending_provision' ? 
+            '⚡ Payment verified. Your private DNS is currently being activated.' : 
+            o.admin_note;
+
+        return `
         <div class="order-row-item">
             <div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <b style="color: #fff; font-size: 14px;">${o.order_id}</b>
-                    <span class="badge badge-${o.status}">${o.status}</span>
+                    <span class="badge ${sInfo.cls}">${sInfo.label}</span>
                 </div>
                 <div class="order-meta-info">
                     ${o.plan_name} • <b>${o.amount} ${o.currency}</b> • Payment: ${o.payment_method} ${o.trx_id ? `(Trx: ${o.trx_id})` : ''}
@@ -262,9 +280,9 @@ function renderOrderHistory(orders) {
                         <b>${o.ban_reason}</b>
                         ${o.detected_ips && o.detected_ips.length ? `<div style="margin-top: 2px; color: #f87171; font-family: monospace;">Detected IPs: ${o.detected_ips.join(', ')}</div>` : ''}
                     </div>
-                ` : (o.admin_note ? `
+                ` : (displayNote ? `
                     <div style="margin-top: 4px; font-size: 11px; color: var(--text-muted);">
-                        Note: ${o.admin_note}
+                        ${displayNote}
                     </div>
                 ` : '')}
                 <div>
@@ -277,7 +295,8 @@ function renderOrderHistory(orders) {
                 ${o.created_at ? o.created_at.split(' ')[0] : ''}
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // Copy to Clipboard Utility
