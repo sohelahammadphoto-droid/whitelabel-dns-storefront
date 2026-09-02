@@ -254,12 +254,18 @@
                 <div id="pay-subtab-manual" class="card-box" style="max-width: 860px; display: none;">
                     <div class="box-header">
                         <div>
-                            <div class="box-title">📝 Manual Payment Methods & Accounts</div>
-                            <span style="font-size: 12px; color: var(--text-muted);">Manage offline Send Money options (bKash, Nagad, STC Pay, Urpay, Bank, etc.).</span>
+                            <div class="box-title" style="display: flex; align-items: center; gap: 8px;">
+                                <span>📝</span> Manual Payment Methods & Accounts
+                            </div>
+                            <span style="font-size: 12px; color: var(--text-muted);">Enable offline Send Money options (bKash, Nagad, STC Pay, Urpay, Bank, etc.).</span>
                         </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="addPaymentMethod()">+ Add Payment Method</button>
-                            <button type="button" class="btn btn-primary btn-sm" onclick="savePaymentMethods()">💾 Save Manual Methods</button>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <label class="switch" title="Enable/Disable Manual Payments">
+                                <input type="checkbox" id="setting-manual-payment-enabled" checked>
+                                <span class="slider"></span>
+                            </label>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="addPaymentMethod()">+ Add Method</button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="savePaymentMethods()">💾 Save Manual</button>
                         </div>
                     </div>
 

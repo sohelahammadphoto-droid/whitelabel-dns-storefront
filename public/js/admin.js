@@ -524,6 +524,8 @@ async function loadSettings() {
         if (webhookUrlEl) webhookUrlEl.textContent = `${window.location.origin}/api/payment/uddoktapay/webhook`;
 
         // Payment methods
+        const manualCheck = document.getElementById("setting-manual-payment-enabled");
+        if (manualCheck) manualCheck.checked = (d.manual_payment_enabled !== false);
         currentPaymentMethods = d.payment_methods || [];
         renderAdminPaymentMethods();
 
@@ -650,15 +652,19 @@ window.saveUddoktaPaySettings = async function() {
 };
 
 window.savePaymentMethods = async function() {
+    const isManualEnabled = document.getElementById("setting-manual-payment-enabled")?.checked !== false;
     try {
         const res = await fetch("/api/admin/settings", {
             method: "POST",
             headers: getHeaders(),
-            body: JSON.stringify({ payment_methods: currentPaymentMethods })
+            body: JSON.stringify({
+                manual_payment_enabled: isManualEnabled,
+                payment_methods: currentPaymentMethods
+            })
         });
         const json = await res.json();
         if (json.success) {
-            alert("🎉 Payment methods saved successfully! Customer checkout updated.");
+            alert("🎉 Manual payment methods and status saved successfully! Customer checkout updated.");
         } else {
             alert("❌ " + json.error);
         }

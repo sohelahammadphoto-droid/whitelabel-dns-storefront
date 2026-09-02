@@ -156,6 +156,7 @@ export async function onRequestGet(context) {
         uddoktapay_base_url: s.uddoktapay_base_url || "",
 
         // --- 20. Manual Payment Methods ---
+        manual_payment_enabled: s.manual_payment_enabled !== undefined ? Boolean(s.manual_payment_enabled) : true,
         payment_methods: s.payment_methods || [
             { id: "stcpay", name: "STC Pay", number: "0501234567", account_name: "Personal", instructions: "Send to this STC Pay number & copy TrxID." },
             { id: "urpay", name: "Urpay", number: "0501234567", account_name: "Personal", instructions: "Send via Urpay & copy TrxID." },

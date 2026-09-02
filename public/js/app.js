@@ -971,9 +971,18 @@ function openOrderModal(planId) {
     if (couponBadge) couponBadge.style.display = "none";
 
     // Setup payment mode according to gateway availability
-    if (siteConfig && siteConfig.uddoktapay_enabled) {
+    const isAutoOn = Boolean(siteConfig && siteConfig.uddoktapay_enabled);
+    const isManualOn = Boolean(siteConfig && (siteConfig.manual_payment_enabled !== false));
+
+    if (isAutoOn && isManualOn) {
         if (modeContainer) modeContainer.style.display = "block";
         switchPaymentMode("auto");
+    } else if (isAutoOn && !isManualOn) {
+        if (modeContainer) modeContainer.style.display = "none";
+        switchPaymentMode("auto");
+    } else if (!isAutoOn && isManualOn) {
+        if (modeContainer) modeContainer.style.display = "none";
+        switchPaymentMode("manual");
     } else {
         if (modeContainer) modeContainer.style.display = "none";
         switchPaymentMode("manual");

@@ -129,6 +129,7 @@ export async function onRequestGet(context) {
 
         // --- 16. Payment Methods & Automated Gateway ---
         uddoktapay_enabled: s.uddoktapay_enabled !== undefined ? Boolean(s.uddoktapay_enabled) : false,
+        manual_payment_enabled: s.manual_payment_enabled !== undefined ? Boolean(s.manual_payment_enabled) : true,
         payment_methods: s.payment_methods || [
             { id: "stcpay", name: "STC Pay", number: "0501234567", account_name: "Personal", instructions: "Send to this STC Pay number & copy TrxID." },
             { id: "urpay", name: "Urpay", number: "0501234567", account_name: "Personal", instructions: "Send via Urpay & copy TrxID." },
