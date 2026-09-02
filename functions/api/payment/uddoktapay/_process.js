@@ -85,37 +85,46 @@ export async function processCompletedPayment(env, paymentData) {
     let autoProvisionSuccess = false;
 
     if (resellerApiKey) {
-        try {
-            // Standard format: u + 7-digit random number (e.g. u7492810)
-            const rand7 = Math.floor(1000000 + Math.random() * 9000000);
-            const suggestedUsername = `u${rand7}`;
+        // Try up to 3 times in case of extreme duplicate collision
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                // Standard format: u + 7-digit random number (e.g. u7492810)
+                const rand7 = Math.floor(1000000 + Math.random() * 9000000);
+                const suggestedUsername = `u${rand7}`;
 
-            const createRes = await fetch(`${mainApiUrl}/api/v1/client/create`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-API-Key": resellerApiKey
-                },
-                body: JSON.stringify({
-                    username: suggestedUsername,
-                    duration_days: durationDays,
-                    phone: customerPhone,
-                    note: `UddoktaPay (${orderId} - ${trxId})`
-                })
-            });
+                const createRes = await fetch(`${mainApiUrl}/api/v1/client/create`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-API-Key": resellerApiKey
+                    },
+                    body: JSON.stringify({
+                        username: suggestedUsername,
+                        duration_days: durationDays,
+                        phone: customerPhone,
+                        note: `AutoOrder (${orderId} - ${trxId})`
+                    })
+                });
 
-            const createData = await createRes.json();
-            if (createRes.ok && createData.success && createData.data) {
-                const client = createData.data;
-                clientId = client.username || client.client_id || suggestedUsername;
-                dnsUrl = client.dns_url || client.dot_host || client.dot_domain || client.android_dns || `${clientId}.dnsbd.pp.ua`;
-                expireDate = client.expires_at || client.expire_date || "";
-                autoProvisionSuccess = true;
-            } else {
-                console.warn("Main API auto-provision failed (e.g. low balance or offline):", createData);
+                const createData = await createRes.json();
+                if (createRes.ok && createData.success && createData.data) {
+                    const client = createData.data;
+                    clientId = client.username || client.client_id || suggestedUsername;
+                    dnsUrl = client.dns_url || client.dot_host || client.dot_domain || client.android_dns || `${clientId}.dnsbd.pp.ua`;
+                    expireDate = client.expires_at || client.expire_date || "";
+                    autoProvisionSuccess = true;
+                    break; // Successfully created
+                } else if (createRes.status === 409) {
+                    console.warn(`Username ${suggestedUsername} already taken, retrying next random PIN (Attempt ${attempt}/3)...`);
+                    continue; // Retry with new random number
+                } else {
+                    console.warn("Main API auto-provision failed (e.g. low balance or offline):", createData);
+                    break;
+                }
+            } catch (err) {
+                console.error("Error communicating with main API:", err);
+                break;
             }
-        } catch (err) {
-            console.error("Error communicating with main API:", err);
         }
     }
 

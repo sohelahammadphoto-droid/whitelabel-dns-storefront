@@ -88,36 +88,47 @@ export async function onRequestPost(context) {
                 return json({ success: false, error: "Reseller API Key is not configured. Please enter your API key in Admin -> Store Settings." }, 400);
             }
 
-            // Always enforce standard random PIN (u + 7 digits e.g. u7492810)
-            const rand7 = Math.floor(1000000 + Math.random() * 9000000);
-            const username = `u${rand7}`;
+            let clientData = null;
+            let finalUsername = "";
 
-            const apiRes = await fetch(`${mainApiUrl}/api/v1/client/create`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-API-Key": apiKey
-                },
-                body: JSON.stringify({
-                    username: username,
-                    phone: order.customer_phone,
-                    duration_days: order.duration_days,
-                    note: `Order ${order.order_id} (${order.customer_name})`
-                })
-            });
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                const rand7 = Math.floor(1000000 + Math.random() * 9000000);
+                finalUsername = `u${rand7}`;
 
-            const apiData = await apiRes.json();
+                const apiRes = await fetch(`${mainApiUrl}/api/v1/client/create`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-API-Key": apiKey
+                    },
+                    body: JSON.stringify({
+                        username: finalUsername,
+                        phone: order.customer_phone,
+                        duration_days: order.duration_days,
+                        note: `Order ${order.order_id} (${order.customer_name})`
+                    })
+                });
 
-            if (!apiRes.ok || !apiData.success) {
-                return json({
-                    success: false,
-                    error: "Failed to generate DNS from Main Platform: " + (apiData.error || "Unknown error"),
-                    details: apiData
-                }, 400);
+                const apiData = await apiRes.json();
+                if (apiRes.ok && apiData.success && apiData.data) {
+                    clientData = apiData.data;
+                    break;
+                } else if (apiRes.status === 409) {
+                    continue; // Collision retry
+                } else {
+                    return json({
+                        success: false,
+                        error: "Failed to generate DNS from Main Platform: " + (apiData.error || "Unknown error"),
+                        details: apiData
+                    }, 400);
+                }
             }
 
-            const clientData = apiData.data || {};
-            const clientId = clientData.client_id || clientData.username || username;
+            if (!clientData) {
+                return json({ success: false, error: "Failed to allocate unique PIN after 3 attempts. Please try again." }, 500);
+            }
+
+            const clientId = clientData.client_id || clientData.username || finalUsername;
             const dnsUrl = clientData.dns_url || clientData.dot_domain || clientData.dot_host || clientData.android_dns || clientId;
             const expireDate = clientData.expires_at || clientData.expire_date || "";
 
