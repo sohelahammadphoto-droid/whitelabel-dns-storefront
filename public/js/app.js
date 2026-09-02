@@ -928,23 +928,29 @@ let currentPaymentMode = "manual";
 
 function switchPaymentMode(mode) {
     currentPaymentMode = mode;
-    const btnAuto = document.getElementById("btn-mode-auto");
+    const btnUddokta = document.getElementById("btn-mode-uddokta");
+    const btnBdusp = document.getElementById("btn-mode-bdusp");
     const btnManual = document.getElementById("btn-mode-manual");
     const autoNotice = document.getElementById("auto-payment-notice");
     const manualFields = document.getElementById("manual-payment-fields");
     const submitBtn = document.getElementById("order-submit-btn");
     const trxInput = document.getElementById("order-trx");
 
-    if (mode === "auto") {
-        if (btnAuto) btnAuto.classList.add("active");
-        if (btnManual) btnManual.classList.remove("active");
+    if (btnUddokta) btnUddokta.classList.toggle("active", mode === "uddokta");
+    if (btnBdusp) btnBdusp.classList.toggle("active", mode === "bdusp");
+    if (btnManual) btnManual.classList.toggle("active", mode === "manual");
+
+    if (mode === "uddokta") {
         if (autoNotice) autoNotice.style.display = "block";
         if (manualFields) manualFields.style.display = "none";
         if (submitBtn) submitBtn.textContent = "⚡ Pay with UddoktaPay & Activate Instant DNS";
         if (trxInput) trxInput.removeAttribute("required");
+    } else if (mode === "bdusp") {
+        if (autoNotice) autoNotice.style.display = "block";
+        if (manualFields) manualFields.style.display = "none";
+        if (submitBtn) submitBtn.textContent = "⚡ Pay with BDUSP Pay & Activate Instant DNS";
+        if (trxInput) trxInput.removeAttribute("required");
     } else {
-        if (btnAuto) btnAuto.classList.remove("active");
-        if (btnManual) btnManual.classList.add("active");
         if (autoNotice) autoNotice.style.display = "none";
         if (manualFields) manualFields.style.display = "block";
         if (submitBtn) submitBtn.textContent = "Confirm & Submit Order";
@@ -971,20 +977,28 @@ function openOrderModal(planId) {
     if (couponBadge) couponBadge.style.display = "none";
 
     // Setup payment mode according to gateway availability
-    const isAutoOn = Boolean(siteConfig && siteConfig.uddoktapay_enabled);
+    const isUddoktaOn = Boolean(siteConfig && siteConfig.uddoktapay_enabled);
+    const isBduspOn = Boolean(siteConfig && siteConfig.bdusp_enabled);
     const isManualOn = Boolean(siteConfig && (siteConfig.manual_payment_enabled !== false));
 
-    if (isAutoOn && isManualOn) {
-        if (modeContainer) modeContainer.style.display = "block";
-        switchPaymentMode("auto");
-    } else if (isAutoOn && !isManualOn) {
-        if (modeContainer) modeContainer.style.display = "none";
-        switchPaymentMode("auto");
-    } else if (!isAutoOn && isManualOn) {
-        if (modeContainer) modeContainer.style.display = "none";
-        switchPaymentMode("manual");
+    const btnUddokta = document.getElementById("btn-mode-uddokta");
+    const btnBdusp = document.getElementById("btn-mode-bdusp");
+    const btnManual = document.getElementById("btn-mode-manual");
+
+    if (btnUddokta) btnUddokta.style.display = isUddoktaOn ? "block" : "none";
+    if (btnBdusp) btnBdusp.style.display = isBduspOn ? "block" : "none";
+    if (btnManual) btnManual.style.display = isManualOn ? "block" : "none";
+
+    const activeCount = (isUddoktaOn ? 1 : 0) + (isBduspOn ? 1 : 0) + (isManualOn ? 1 : 0);
+    if (modeContainer) {
+        modeContainer.style.display = activeCount > 1 ? "block" : "none";
+    }
+
+    if (isUddoktaOn) {
+        switchPaymentMode("uddokta");
+    } else if (isBduspOn) {
+        switchPaymentMode("bdusp");
     } else {
-        if (modeContainer) modeContainer.style.display = "none";
         switchPaymentMode("manual");
     }
 
@@ -1147,8 +1161,8 @@ async function submitOrder(e) {
     }
 
     // ⚡ 1. Automated Gateway Checkout (UddoktaPay)
-    if (currentPaymentMode === "auto") {
-        btn.textContent = "Redirecting to Payment Gateway...";
+    if (currentPaymentMode === "uddokta") {
+        btn.textContent = "Redirecting to UddoktaPay...";
         try {
             const res = await fetch("/api/payment/uddoktapay/checkout", {
                 method: "POST",
@@ -1167,6 +1181,31 @@ async function submitOrder(e) {
         } finally {
             btn.disabled = false;
             btn.textContent = "⚡ Pay with UddoktaPay & Activate Instant DNS";
+        }
+        return;
+    }
+
+    // ⚡ 2. Automated Gateway Checkout (BDUSP Pay)
+    if (currentPaymentMode === "bdusp") {
+        btn.textContent = "Redirecting to BDUSP Pay...";
+        try {
+            const res = await fetch("/api/payment/bdusp/checkout", {
+                method: "POST",
+                headers: headers,
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success && data.payment_url) {
+                window.location.href = data.payment_url;
+                return;
+            } else {
+                alert("❌ " + (data.error || "BDUSP Pay initialization failed"));
+            }
+        } catch (err) {
+            alert("❌ Connection error: " + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "⚡ Pay with BDUSP Pay & Activate Instant DNS";
         }
         return;
     }

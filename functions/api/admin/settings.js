@@ -155,7 +155,13 @@ export async function onRequestGet(context) {
         uddoktapay_api_key: s.uddoktapay_api_key || "",
         uddoktapay_base_url: s.uddoktapay_base_url || "",
 
-        // --- 20. Manual Payment Methods ---
+        // --- 20. Automated Payment Gateway (BDUSP Pay) ---
+        bdusp_enabled: s.bdusp_enabled !== undefined ? Boolean(s.bdusp_enabled) : false,
+        bdusp_api_key: s.bdusp_api_key || "",
+        bdusp_secret_key: s.bdusp_secret_key || "",
+        bdusp_brand_key: s.bdusp_brand_key || "",
+
+        // --- 21. Manual Payment Methods ---
         manual_payment_enabled: s.manual_payment_enabled !== undefined ? Boolean(s.manual_payment_enabled) : true,
         payment_methods: s.payment_methods || [
             { id: "stcpay", name: "STC Pay", number: "0501234567", account_name: "Personal", instructions: "Send to this STC Pay number & copy TrxID." },

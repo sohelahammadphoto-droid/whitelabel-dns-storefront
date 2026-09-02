@@ -436,22 +436,25 @@
                     </div>
                 </div>
 
-                <!-- ⚡ Payment Mode Selector (Auto vs Manual) -->
+                <!-- ⚡ Payment Gateway Selector (UddoktaPay vs BDUSP Pay vs Manual) -->
                 <div class="form-group" id="payment-mode-container" style="display: none;">
-                    <label class="form-label" style="font-weight: 700; color: #38bdf8;">Choose Payment Mode</label>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                        <button type="button" class="btn-payment-mode active" id="btn-mode-auto" onclick="switchPaymentMode('auto')">
-                            ⚡ Instant Auto<br><span style="font-size: 10px; font-weight: 500; opacity: 0.85;">bKash, Nagad, Cards</span>
+                    <label class="form-label" style="font-weight: 700; color: #38bdf8;">Choose Payment Gateway</label>
+                    <div id="payment-mode-buttons-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;">
+                        <button type="button" class="btn-payment-mode" id="btn-mode-uddokta" onclick="switchPaymentMode('uddokta')">
+                            ⚡ UddoktaPay<br><span style="font-size: 10px; font-weight: 500; opacity: 0.85;">bKash, Nagad, Cards</span>
+                        </button>
+                        <button type="button" class="btn-payment-mode" id="btn-mode-bdusp" onclick="switchPaymentMode('bdusp')">
+                            ⚡ BDUSP Pay<br><span style="font-size: 10px; font-weight: 500; opacity: 0.85;">bKash, Nagad, Rocket</span>
                         </button>
                         <button type="button" class="btn-payment-mode" id="btn-mode-manual" onclick="switchPaymentMode('manual')">
-                            📝 Manual Send Money<br><span style="font-size: 10px; font-weight: 500; opacity: 0.85;">Submit TrxID</span>
+                            📝 Manual Send<br><span style="font-size: 10px; font-weight: 500; opacity: 0.85;">Submit TrxID</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- Auto Payment Notice Banner -->
                 <div id="auto-payment-notice" style="display: none; padding: 12px 14px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; font-size: 12px; color: #e0f2fe; margin-bottom: 14px;">
-                    ⚡ <b>Instant 24/7 Activation:</b> You will be redirected to the secure UddoktaPay payment page. Your Private DNS activates automatically upon payment!
+                    ⚡ <b>Instant 24/7 Activation:</b> You will be redirected to the secure payment page. Your Private DNS activates automatically upon payment!
                 </div>
 
                 <!-- Manual Payment Fields Container -->

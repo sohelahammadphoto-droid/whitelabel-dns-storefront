@@ -206,12 +206,15 @@
             <!-- TAB: 💳 PAYMENT METHODS & NUMBERS MANAGER -->
             <div id="tab-payments" class="tab-content" style="display: none;">
                 <!-- Payment Sub-Nav Tabs -->
-                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; flex-wrap: wrap;">
                     <button type="button" id="pay-subtab-auto-btn" class="btn btn-primary btn-sm" style="font-weight: 700;" onclick="switchPaymentSubTab('auto')">
-                        ⚡ 1. Automated Gateway (UddoktaPay)
+                        ⚡ 1. UddoktaPay
+                    </button>
+                    <button type="button" id="pay-subtab-bdusp-btn" class="btn btn-secondary btn-sm" style="font-weight: 700;" onclick="switchPaymentSubTab('bdusp')">
+                        ⚡ 2. BDUSP Pay
                     </button>
                     <button type="button" id="pay-subtab-manual-btn" class="btn btn-secondary btn-sm" style="font-weight: 700;" onclick="switchPaymentSubTab('manual')">
-                        📝 2. Manual Methods (bKash, Nagad, STC Pay)
+                        📝 3. Manual Methods (bKash, Nagad, STC Pay)
                     </button>
                 </div>
 
@@ -246,6 +249,46 @@
                     <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
                         <button type="button" class="btn btn-primary" onclick="saveUddoktaPaySettings()">
                             💾 Save UddoktaPay Gateway
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. Automated Gateway (BDUSP Pay) Sub-Tab -->
+                <div id="pay-subtab-bdusp" class="card-box" style="max-width: 860px; display: none; border-color: rgba(168, 85, 247, 0.4);">
+                    <div class="box-header">
+                        <div>
+                            <div class="box-title" style="color: #c084fc; display: flex; align-items: center; gap: 8px;">
+                                <span>⚡</span> Automated Payment Gateway (BDUSP Pay)
+                            </div>
+                            <span style="font-size: 12px; color: var(--text-muted);">Enable instant auto-payment via BDUSP Pay Gateway (bKash, Nagad, Rocket, Bank Cards & Wallets).</span>
+                        </div>
+                        <label class="switch" title="Enable/Disable BDUSP Pay Gateway">
+                            <input type="checkbox" id="setting-bdusp-enabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 15px;">
+                        <div class="form-group">
+                            <label class="form-label" style="font-weight: 700; color: #cbd5e1;">BDUSP API Key (App Key) *</label>
+                            <input type="password" id="setting-bdusp-apikey" class="form-control" placeholder="e.g. gnXi7etgWNhFyFGZFrOMYyrmn...">
+                            <span style="font-size: 11px; color: var(--text-muted);">From BDUSP Panel ➔ API Credentials</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="font-weight: 700; color: #cbd5e1;">BDUSP Secret Key *</label>
+                            <input type="password" id="setting-bdusp-secretkey" class="form-control" placeholder="Your Secret Key">
+                            <span style="font-size: 11px; color: var(--text-muted);">Secret Key from API Credentials</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="font-weight: 700; color: #cbd5e1;">BDUSP Brand Key *</label>
+                            <input type="password" id="setting-bdusp-brandkey" class="form-control" placeholder="Your Brand Key">
+                            <span style="font-size: 11px; color: var(--text-muted);">Brand Key from Brands section</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                        <button type="button" class="btn btn-primary" onclick="saveBduspSettings()">
+                            💾 Save BDUSP Gateway
                         </button>
                     </div>
                 </div>

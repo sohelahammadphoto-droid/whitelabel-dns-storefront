@@ -523,6 +523,13 @@ async function loadSettings() {
         const webhookUrlEl = document.getElementById("uddoktapay-webhook-url");
         if (webhookUrlEl) webhookUrlEl.textContent = `${window.location.origin}/api/payment/uddoktapay/webhook`;
 
+        // Automated Gateway (BDUSP Pay)
+        const bduspCheck = document.getElementById("setting-bdusp-enabled");
+        if (bduspCheck) bduspCheck.checked = Boolean(d.bdusp_enabled);
+        setVal("setting-bdusp-apikey", d.bdusp_api_key || "");
+        setVal("setting-bdusp-secretkey", d.bdusp_secret_key || "");
+        setVal("setting-bdusp-brandkey", d.bdusp_brand_key || "");
+
         // Payment methods
         const manualCheck = document.getElementById("setting-manual-payment-enabled");
         if (manualCheck) manualCheck.checked = (d.manual_payment_enabled !== false);
@@ -608,21 +615,19 @@ window.deletePaymentMethod = function(idx) {
 
 window.switchPaymentSubTab = function(subTab) {
     const autoBox = document.getElementById("pay-subtab-auto");
+    const bduspBox = document.getElementById("pay-subtab-bdusp");
     const manualBox = document.getElementById("pay-subtab-manual");
     const autoBtn = document.getElementById("pay-subtab-auto-btn");
+    const bduspBtn = document.getElementById("pay-subtab-bdusp-btn");
     const manualBtn = document.getElementById("pay-subtab-manual-btn");
 
-    if (subTab === "auto") {
-        if (autoBox) autoBox.style.display = "block";
-        if (manualBox) manualBox.style.display = "none";
-        if (autoBtn) autoBtn.className = "btn btn-primary btn-sm";
-        if (manualBtn) manualBtn.className = "btn btn-secondary btn-sm";
-    } else {
-        if (autoBox) autoBox.style.display = "none";
-        if (manualBox) manualBox.style.display = "block";
-        if (autoBtn) autoBtn.className = "btn btn-secondary btn-sm";
-        if (manualBtn) manualBtn.className = "btn btn-primary btn-sm";
-    }
+    if (autoBox) autoBox.style.display = (subTab === "auto") ? "block" : "none";
+    if (bduspBox) bduspBox.style.display = (subTab === "bdusp") ? "block" : "none";
+    if (manualBox) manualBox.style.display = (subTab === "manual") ? "block" : "none";
+
+    if (autoBtn) autoBtn.className = (subTab === "auto") ? "btn btn-primary btn-sm" : "btn btn-secondary btn-sm";
+    if (bduspBtn) bduspBtn.className = (subTab === "bdusp") ? "btn btn-primary btn-sm" : "btn btn-secondary btn-sm";
+    if (manualBtn) manualBtn.className = (subTab === "manual") ? "btn btn-primary btn-sm" : "btn btn-secondary btn-sm";
 };
 
 window.saveUddoktaPaySettings = async function() {
@@ -648,6 +653,34 @@ window.saveUddoktaPaySettings = async function() {
         }
     } catch (e) {
         alert("Error saving UddoktaPay settings: " + e.message);
+    }
+};
+
+window.saveBduspSettings = async function() {
+    const isEnabled = document.getElementById("setting-bdusp-enabled")?.checked || false;
+    const apiKey = document.getElementById("setting-bdusp-apikey")?.value.trim() || "";
+    const secretKey = document.getElementById("setting-bdusp-secretkey")?.value.trim() || "";
+    const brandKey = document.getElementById("setting-bdusp-brandkey")?.value.trim() || "";
+
+    try {
+        const res = await fetch("/api/admin/settings", {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({
+                bdusp_enabled: isEnabled,
+                bdusp_api_key: apiKey,
+                bdusp_secret_key: secretKey,
+                bdusp_brand_key: brandKey
+            })
+        });
+        const json = await res.json();
+        if (json.success) {
+            alert("🎉 BDUSP Pay Automated Payment Gateway settings saved successfully!");
+        } else {
+            alert("❌ " + json.error);
+        }
+    } catch (e) {
+        alert("Error saving BDUSP Pay settings: " + e.message);
     }
 };
 
