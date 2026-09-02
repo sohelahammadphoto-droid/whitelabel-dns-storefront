@@ -329,7 +329,7 @@ async function loadOrders() {
                     <div style="font-size: 11px; color: #a5b4fc; font-family: monospace;">${o.trx_id}</div>
                 </td>
                 <td>
-                    <span class="badge badge-${o.status}">${o.status}</span>
+                    <span class="badge badge-${o.status}">${o.status === 'paid_pending_provision' ? 'Paid (Need PIN)' : o.status}</span>
                 </td>
                 <td>
                     ${o.dns_url ? `
@@ -339,7 +339,7 @@ async function loadOrders() {
                 </td>
                 <td>
                     <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                        ${o.status === 'pending' ? `
+                        ${(o.status === 'pending' || o.status === 'paid_pending_provision') ? `
                             <button class="btn btn-success btn-sm" onclick="approveOrder('${o.order_id}')">✓ Approve</button>
                             <button class="btn btn-danger btn-sm" onclick="rejectOrder('${o.order_id}')">✕ Reject</button>
                         ` : ''}
