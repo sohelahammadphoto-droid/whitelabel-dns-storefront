@@ -981,14 +981,42 @@ function openOrderModal(planId) {
 
     updateOrderModalPrice();
 
-    // Auto-fill if user logged in
+    // Setup customer details: if logged in, hide guest inputs and show 1-click badge!
+    const guestFields = document.getElementById("guest-customer-fields");
+    const loggedBadge = document.getElementById("logged-in-user-badge");
+    const nameIn = document.getElementById("order-name");
+    const phoneIn = document.getElementById("order-phone");
+    const emailIn = document.getElementById("order-email");
+
     if (customerUser) {
-        const nameIn = document.getElementById("order-name");
-        const phoneIn = document.getElementById("order-phone");
-        const emailIn = document.getElementById("order-email");
-        if (nameIn) nameIn.value = customerUser.name || "";
-        if (phoneIn) phoneIn.value = customerUser.phone || "";
-        if (emailIn) emailIn.value = customerUser.email || "";
+        if (guestFields) guestFields.style.display = "none";
+        if (loggedBadge) {
+            loggedBadge.style.display = "flex";
+            const nameEl = document.getElementById("modal-logged-name");
+            const emailEl = document.getElementById("modal-logged-email");
+            if (nameEl) nameEl.textContent = customerUser.name || "Customer";
+            if (emailEl) emailEl.textContent = customerUser.email || customerUser.phone || "";
+        }
+        if (nameIn) {
+            nameIn.value = customerUser.name || "";
+            nameIn.removeAttribute("required");
+        }
+        if (phoneIn) {
+            phoneIn.value = customerUser.phone || "";
+            phoneIn.removeAttribute("required");
+        }
+        if (emailIn) {
+            emailIn.value = customerUser.email || "";
+        }
+    } else {
+        if (guestFields) guestFields.style.display = "block";
+        if (loggedBadge) loggedBadge.style.display = "none";
+        if (nameIn) {
+            nameIn.setAttribute("required", "true");
+        }
+        if (phoneIn) {
+            phoneIn.setAttribute("required", "true");
+        }
     }
 
     const modal = document.getElementById("order-modal");
@@ -1085,6 +1113,10 @@ async function submitOrder(e) {
         finalAmount = currentCoupon.final_amount;
     }
 
+    const customerName = (customerUser ? customerUser.name : document.getElementById("order-name")?.value) || "Valued Customer";
+    const customerPhone = (customerUser ? (customerUser.phone || customerUser.email) : document.getElementById("order-phone")?.value) || "";
+    const customerEmail = (customerUser ? customerUser.email : document.getElementById("order-email")?.value) || "";
+
     const payload = {
         ...antiBot,
         plan_id: currentPlan.id,
@@ -1093,9 +1125,9 @@ async function submitOrder(e) {
         amount: finalAmount,
         currency: curr.code,
         coupon_code: currentCoupon ? currentCoupon.code : "",
-        customer_name: document.getElementById("order-name").value.trim(),
-        customer_phone: document.getElementById("order-phone").value.trim(),
-        customer_email: document.getElementById("order-email").value.trim(),
+        customer_name: customerName.trim(),
+        customer_phone: customerPhone.trim(),
+        customer_email: customerEmail.trim(),
         payment_method: document.getElementById("order-payment-method")?.value || "UddoktaPay",
         trx_id: document.getElementById("order-trx")?.value.trim() || ""
     };

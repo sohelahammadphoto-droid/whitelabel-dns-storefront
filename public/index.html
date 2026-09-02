@@ -406,19 +406,34 @@
                     <div id="coupon-status-msg" class="coupon-status-msg"></div>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Your Name</label>
-                    <input type="text" id="order-name" class="form-control" placeholder="Full Name" required>
+                <!-- 👤 Logged-in Customer Fast Profile Badge -->
+                <div id="logged-in-user-badge" style="display: none; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 20px;">👤</span>
+                        <div>
+                            <div style="font-size: 13px; font-weight: 800; color: #fff;" id="modal-logged-name">Customer Name</div>
+                            <div style="font-size: 11px; color: #94a3b8;" id="modal-logged-email">email@gmail.com</div>
+                        </div>
+                    </div>
+                    <span style="font-size: 10px; font-weight: 800; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 3px 8px; border-radius: 12px;">LOGGED IN</span>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">WhatsApp / Phone Number</label>
-                    <input type="text" id="order-phone" class="form-control" placeholder="e.g. +966 50 123 4567" required>
-                </div>
+                <!-- Guest Customer Input Fields (Visible only for guests) -->
+                <div id="guest-customer-fields">
+                    <div class="form-group">
+                        <label class="form-label">Your Name</label>
+                        <input type="text" id="order-name" class="form-control" placeholder="Full Name" required>
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label">Gmail / Email Address (For Account Login & Invoice)</label>
-                    <input type="email" id="order-email" class="form-control" placeholder="name@gmail.com">
+                    <div class="form-group">
+                        <label class="form-label">WhatsApp / Phone Number</label>
+                        <input type="text" id="order-phone" class="form-control" placeholder="e.g. +966 50 123 4567" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Gmail / Email Address (For Account Login & Invoice)</label>
+                        <input type="email" id="order-email" class="form-control" placeholder="name@gmail.com">
+                    </div>
                 </div>
 
                 <!-- ⚡ Payment Mode Selector (Auto vs Manual) -->
