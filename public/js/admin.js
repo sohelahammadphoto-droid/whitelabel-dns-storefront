@@ -1319,14 +1319,12 @@ async function handleSaveSettings(e) {
         });
         const json = await res.json();
         if (json.success) {
-            if (e) alert("🎉 Core settings saved successfully!");
             if (payload.new_password) {
-                adminPassword = payload.new_password;
-                localStorage.setItem("admin_password", adminPassword);
-                if (document.getElementById("setting-newpassword")) {
-                    document.getElementById("setting-newpassword").value = "";
-                }
+                alert("🔐 Admin password changed successfully!\n\nFor security, all active sessions have been terminated. Please log in with your new password.");
+                handleLogout();
+                return;
             }
+            if (e) alert("🎉 Core settings saved successfully!");
         } else if (e) {
             alert("❌ " + json.error);
         }

@@ -129,6 +129,7 @@ export function createCustomerToken(customer) {
         email: customer.email,
         name: customer.name,
         phone: customer.phone || "",
+        pass_sig: customer.password_hash ? customer.password_hash.substring(0, 12) : "",
         iat: Date.now()
     };
     return btoa(JSON.stringify(payload));
@@ -143,9 +144,17 @@ export async function verifyCustomerAuth(request, env) {
         if (!decoded || !decoded.id || !decoded.email) return null;
 
         if (env.DB) {
-            const customer = await env.DB.prepare("SELECT id, name, email, phone, created_at FROM customers WHERE id = ? AND email = ?")
+            const customer = await env.DB.prepare("SELECT id, name, email, phone, password_hash, created_at FROM customers WHERE id = ? AND email = ?")
                 .bind(decoded.id, decoded.email.toLowerCase()).first();
-            return customer || null;
+            if (!customer) return null;
+
+            // Invalidate token if customer's password has changed since token issuance
+            if (decoded.pass_sig && customer.password_hash) {
+                if (decoded.pass_sig !== customer.password_hash.substring(0, 12)) {
+                    return null; // Password changed! Force re-login
+                }
+            }
+            return customer;
         }
         return decoded;
     } catch {

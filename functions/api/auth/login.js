@@ -47,7 +47,7 @@ export async function onRequestPost(context) {
             created_at: customer.created_at
         };
 
-        const token = createCustomerToken(userSafe);
+        const token = createCustomerToken({ ...userSafe, password_hash: customer.password_hash });
 
         return json({
             success: true,

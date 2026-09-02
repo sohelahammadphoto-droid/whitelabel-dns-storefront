@@ -95,7 +95,7 @@ export async function onRequestPost(context) {
             phone
         };
 
-        const token = createCustomerToken(customer);
+        const token = createCustomerToken({ ...customer, password_hash: passwordHash });
 
         return json({
             success: true,
